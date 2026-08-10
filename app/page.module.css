@@ -297,7 +297,7 @@
 .zoomHud {
   position: absolute;
   z-index: 3;
-  right: 24px;
+  right: 72px;
   bottom: 24px;
   display: flex;
   align-items: center;
