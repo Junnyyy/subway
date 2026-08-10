@@ -26,3 +26,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   can fail while binding an internal compiler port. The documented Next.js
   Webpack fallback distinguishes that environment failure from application
   source errors: `npm run build -- --webpack`.
+- The second subway-network prototype round replaces Boroughs, Diagram, and
+  Flow with Street Atlas, Transit Overlay, and Quiet Grid. All three share the
+  same geographic substrate so reviews compare visual density and information
+  hierarchy rather than unrelated map shapes.
+- `scripts/generate-subway-prototype-data.mjs` produces the prototype-only
+  `city-map-data.ts` artifact from official NYC borough, street-centerline, and
+  functional-parkland GeoJSON plus the static MTA subway GTFS. It merges road
+  geometry into a few SVG paths, keeps Manhattan local streets while limiting
+  outer-borough streets to cartographic levels, and selects dominant GTFS
+  shapes for each service. Train positions remain deliberately simulated.
