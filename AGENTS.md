@@ -36,3 +36,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   geometry into a few SVG paths, keeps Manhattan local streets while limiting
   outer-borough streets to cartographic levels, and selects dominant GTFS
   shapes for each service. Train positions remain deliberately simulated.
+- Map landmark callouts are keyed to stable GTFS parent stop IDs rather than
+  stop names because major complexes often repeat the same name across several
+  route records. Keep the hand-tuned label offsets and anchors in the generator
+  when adding hubs so the Transit Overlay remains sparse and collision-free.
