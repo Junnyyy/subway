@@ -51,3 +51,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   generator projects every trip stop monotonically onto its GTFS shape and
   preserves service times beyond `24:00:00`; do not repeat this work in the
   browser or bundle the raw GTFS tables into React.
+- Use the repository's native `pnpm` workflow for development, data generation,
+  tests, and builds; do not substitute npm or Corepack commands.
+- The production route renders the geographic base and moving trains on two
+  canvas layers: static cartography redraws only for resize/theme changes while
+  the train layer samples schedule keyframes outside React state. The default
+  clock follows `America/New_York`; pause freezes the model and resume returns
+  to now, while `prefers-reduced-motion` starts on a paused representative frame.

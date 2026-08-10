@@ -22,7 +22,7 @@ NYC_BOROUGHS_FILE=/path/to/boroughs.geojson \
 NYC_MAJOR_STREETS_FILE=/path/to/major-streets.geojson \
 NYC_MANHATTAN_STREETS_FILE=/path/to/manhattan-streets.geojson \
 NYC_PARKS_FILE=/path/to/parks.geojson \
-npm run data:build
+pnpm data:build
 ```
 
 The generator writes content-hashed map and schedule chunks to

@@ -1,0 +1,383 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import {
+  activeServiceIds,
+  getNewYorkClock,
+  shiftServiceDate,
+} from "@/lib/subway/schedule";
+import type {
+  ScheduleChunk,
+  SubwayManifest,
+  SubwayMapData,
+  ThemeName,
+} from "@/lib/subway/types";
+import {
+  type LoadedScene,
+  type ModelClock,
+  type SceneStats,
+  type ServiceContext,
+  TransitMap,
+} from "./transit-map";
+import styles from "../page.module.css";
+
+type PlaybackMode = "auto" | "playing" | "paused";
+type ThemeMode = "system" | ThemeName;
+
+const jsonCache = new Map<string, Promise<unknown>>();
+
+function loadJson<T>(url: string) {
+  const cached = jsonCache.get(url);
+  if (cached) return cached as Promise<T>;
+  const request = fetch(url).then(async (response) => {
+    if (!response.ok) throw new Error(`Unable to load ${url} (${response.status})`);
+    return (await response.json()) as T;
+  });
+  jsonCache.set(url, request);
+  request.catch(() => jsonCache.delete(url));
+  return request;
+}
+
+function subscribeToReducedMotion(callback: () => void) {
+  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+  query.addEventListener("change", callback);
+  return () => query.removeEventListener("change", callback);
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function subscribeToColorScheme(callback: () => void) {
+  const query = window.matchMedia("(prefers-color-scheme: dark)");
+  query.addEventListener("change", callback);
+  return () => query.removeEventListener("change", callback);
+}
+
+function getColorSchemeSnapshot() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
+function formatClock(seconds: number) {
+  const normalized = ((Math.floor(seconds) % 86_400) + 86_400) % 86_400;
+  const hours = Math.floor(normalized / 3600);
+  const minutes = Math.floor((normalized % 3600) / 60);
+  const remainingSeconds = normalized % 60;
+  return {
+    time: `${hours % 12 || 12}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`,
+    suffix: hours >= 12 ? "PM" : "AM",
+  };
+}
+
+function formatServiceDate(serviceDate: string) {
+  const date = new Date(
+    `${serviceDate.slice(0, 4)}-${serviceDate.slice(4, 6)}-${serviceDate.slice(6, 8)}T12:00:00Z`,
+  );
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function resolveModelClock(now: number, manifest: SubwayManifest): ModelClock {
+  const clock = getNewYorkClock(new Date(now));
+  const isCovered =
+    clock.serviceDate >= manifest.feed.startDate &&
+    clock.serviceDate <= manifest.feed.endDate;
+  return {
+    serviceDate: isCovered ? clock.serviceDate : manifest.feed.endDate,
+    seconds: clock.seconds,
+    replay: !isCovered,
+  };
+}
+
+function PlayIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="m7 5 7 5-7 5V5Z" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path d="M6.75 5.25v9.5M13.25 5.25v9.5" />
+    </svg>
+  );
+}
+
+function ThemeIcon({ dark }: { dark: boolean }) {
+  if (dark) {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 20 20">
+        <path d="M15.3 12.8A6 6 0 0 1 7.2 4.7 6 6 0 1 0 15.3 12.8Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <circle cx="10" cy="10" r="3" />
+      <path d="M10 2.2v1.6M10 16.2v1.6M2.2 10h1.6M16.2 10h1.6M4.5 4.5l1.1 1.1M14.4 14.4l1.1 1.1M15.5 4.5l-1.1 1.1M5.6 14.4l-1.1 1.1" />
+    </svg>
+  );
+}
+
+export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
+  const [now, setNow] = useState(0);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
+  const [playback, setPlayback] = useState<PlaybackMode>("auto");
+  const [theme, setTheme] = useState<ThemeMode>("system");
+  const [scene, setScene] = useState<LoadedScene | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [stats, setStats] = useState<SceneStats>({ total: 0, byRoute: {} });
+  const prefersReducedMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    getReducedMotionSnapshot,
+    getServerSnapshot,
+  );
+  const systemIsDark = useSyncExternalStore(
+    subscribeToColorScheme,
+    getColorSchemeSnapshot,
+    getServerSnapshot,
+  );
+  const isDark = theme === "dark" || (theme === "system" && systemIsDark);
+  const isPlaying =
+    playback === "playing" ||
+    (playback === "auto" && !prefersReducedMotion);
+  const modelNow = pausedAt ?? now;
+  const modelClock = useMemo(
+    () =>
+      modelNow
+        ? resolveModelClock(modelNow, manifest)
+        : {
+            serviceDate: "",
+            seconds: 0,
+            replay: false,
+          },
+    [manifest, modelNow],
+  );
+  const displayedClock = modelNow
+    ? formatClock(modelClock.seconds)
+    : { time: "—:—:—", suffix: "" };
+
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const firstTick = window.setTimeout(tick, 0);
+    const timer = isPlaying ? window.setInterval(tick, 1_000) : 0;
+    return () => {
+      window.clearTimeout(firstTick);
+      if (timer) window.clearInterval(timer);
+    };
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (!modelClock.serviceDate) return;
+    let ignore = false;
+    const previousDate = shiftServiceDate(modelClock.serviceDate, -1);
+    const currentServices = activeServiceIds(
+      manifest.calendars,
+      manifest.exceptions,
+      modelClock.serviceDate,
+    );
+    const previousServices = activeServiceIds(
+      manifest.calendars,
+      manifest.exceptions,
+      previousDate,
+    );
+    const contexts: ServiceContext[] = [
+      ...currentServices.map((serviceId) => ({
+        serviceId,
+        dayOffset: 0 as const,
+      })),
+      ...previousServices.map((serviceId) => ({
+        serviceId,
+        dayOffset: 1 as const,
+      })),
+    ].filter((context) => manifest.schedules[context.serviceId]);
+    const serviceIds = [...new Set(contexts.map((context) => context.serviceId))];
+
+    Promise.all([
+      loadJson<SubwayMapData>(manifest.mapFile),
+      Promise.all(
+        serviceIds.map(
+          async (serviceId) =>
+            [
+              serviceId,
+              await loadJson<ScheduleChunk>(manifest.schedules[serviceId]),
+            ] as const,
+        ),
+      ),
+    ])
+      .then(([map, schedules]) => {
+        if (ignore) return;
+        setScene({ map, schedules: new Map(schedules), contexts });
+        setLoadError(null);
+      })
+      .catch((error: unknown) => {
+        if (ignore) return;
+        setLoadError(
+          error instanceof Error ? error.message : "Unable to load subway data",
+        );
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [manifest, modelClock.serviceDate]);
+
+  const togglePlayback = () => {
+    if (isPlaying) {
+      const paused = Date.now();
+      setNow(paused);
+      setPausedAt(paused);
+      setPlayback("paused");
+      return;
+    }
+    setPausedAt(null);
+    setNow(Date.now());
+    setPlayback("playing");
+  };
+
+  const toggleTheme = () => {
+    if (theme === "system") {
+      setTheme(systemIsDark ? "light" : "dark");
+      return;
+    }
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  const handleStats = useCallback((nextStats: SceneStats) => {
+    setStats(nextStats);
+  }, []);
+
+  return (
+    <main className={styles.experience} data-theme={isDark ? "dark" : "light"}>
+      <aside className={styles.rail}>
+        <div className={styles.intro}>
+          <p className={styles.eyebrow}>New York City</p>
+          <h1>Subway in motion</h1>
+          <p>The network as it is scheduled to move through New York right now.</p>
+        </div>
+
+        <div className={styles.timeBlock}>
+          <div className={styles.statusLine}>
+            <span className={styles.statusDot} aria-hidden="true" />
+            <span>{modelClock.replay ? "Schedule replay" : "Scheduled now"}</span>
+          </div>
+          <div className={styles.timeValue} suppressHydrationWarning>
+            <strong>{displayedClock.time}</strong>
+            <span>{displayedClock.suffix} ET</span>
+          </div>
+          <small>
+            {modelClock.serviceDate
+              ? formatServiceDate(modelClock.serviceDate)
+              : "New York time"}
+          </small>
+        </div>
+
+        <div className={styles.legend} aria-label="Subway route color legend">
+          {manifest.routeFamilies.map((family) => {
+            const count = family.routeIds.reduce(
+              (total, routeId) => total + (stats.byRoute[routeId] ?? 0),
+              0,
+            );
+            return (
+              <div className={styles.legendRow} key={family.color}>
+                <span
+                  className={styles.legendMark}
+                  style={{ backgroundColor: family.color }}
+                  aria-hidden="true"
+                />
+                <span>{family.labels.join(" ")}</span>
+                <small>{count}</small>
+              </div>
+            );
+          })}
+        </div>
+
+        <dl className={styles.stats}>
+          <div>
+            <dt>Landmarks</dt>
+            <dd>{scene?.map.landmarks.length ?? 19}</dd>
+          </div>
+          <div>
+            <dt>Scheduled trains</dt>
+            <dd>{stats.total}</dd>
+          </div>
+          <div>
+            <dt>Position model</dt>
+            <dd>{isPlaying ? "Following now" : "Paused"}</dd>
+          </div>
+        </dl>
+
+        <div className={styles.controls}>
+          <button
+            className={styles.iconButton}
+            type="button"
+            aria-label={isPlaying ? "Pause scheduled trains" : "Return to now"}
+            onClick={togglePlayback}
+          >
+            {isPlaying ? <PauseIcon /> : <PlayIcon />}
+          </button>
+          <button
+            className={styles.iconButton}
+            type="button"
+            aria-label={isDark ? "Use light appearance" : "Use dark appearance"}
+            onClick={toggleTheme}
+          >
+            <ThemeIcon dark={isDark} />
+          </button>
+          {prefersReducedMotion && !isPlaying ? (
+            <span className={styles.motionNote}>Motion paused</span>
+          ) : null}
+        </div>
+
+        <p className={styles.disclosure}>
+          Modeled from MTA static GTFS. Scheduled positions are not live train
+          locations. Original cartography; not an official MTA map.
+        </p>
+      </aside>
+
+      <section
+        className={styles.mapPanel}
+        aria-label="Scheduled New York City subway map"
+      >
+        <div className={styles.mapTopline}>
+          <span>Transit overlay</span>
+          <span title={`GTFS ${manifest.feed.version}`}>
+            {loadError ?? "MTA static GTFS · modeled positions"}
+          </span>
+        </div>
+        <TransitMap
+          scene={scene}
+          routes={manifest.routes}
+          dark={isDark}
+          isPlaying={isPlaying}
+          modelClock={modelClock}
+          onStats={handleStats}
+        />
+        {!scene && !loadError ? (
+          <div className={styles.loading} role="status">
+            Preparing today&apos;s schedule
+          </div>
+        ) : null}
+        <p className={styles.srOnly} aria-live="polite">
+          {stats.total} trains represented from the current MTA schedule.
+        </p>
+      </section>
+    </main>
+  );
+}

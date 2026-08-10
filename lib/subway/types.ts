@@ -30,6 +30,14 @@ export type RouteDefinition = {
   sortOrder: number;
 };
 
+export type RouteFamily = {
+  color: string;
+  textColor: string;
+  labels: string[];
+  routeIds: string[];
+  sortOrder: number;
+};
+
 export type ShapeDefinition = {
   id: string;
   routeId: string;
@@ -92,6 +100,7 @@ export type SubwayManifest = {
   feed: FeedInfo;
   mapFile: string;
   routes: RouteDefinition[];
+  routeFamilies: RouteFamily[];
   calendars: ServiceCalendar[];
   exceptions: ServiceException[];
   schedules: Record<string, string>;
