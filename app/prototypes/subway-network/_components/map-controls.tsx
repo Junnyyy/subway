@@ -58,7 +58,6 @@ export function MapControls({
         className={styles.iconButton}
         type="button"
         aria-label={isPlaying ? "Pause trains" : "Play trains"}
-        aria-pressed={!isPlaying}
         onClick={onTogglePlayback}
       >
         {isPlaying ? <PauseIcon /> : <PlayIcon />}
@@ -77,4 +76,3 @@ export function MapControls({
     </div>
   );
 }
-

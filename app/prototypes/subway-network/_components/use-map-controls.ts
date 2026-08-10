@@ -24,6 +24,20 @@ function getReducedMotionServerSnapshot() {
   return false;
 }
 
+function subscribeToColorScheme(callback: () => void) {
+  const query = window.matchMedia("(prefers-color-scheme: dark)");
+  query.addEventListener("change", callback);
+  return () => query.removeEventListener("change", callback);
+}
+
+function getColorSchemeSnapshot() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function getColorSchemeServerSnapshot() {
+  return false;
+}
+
 export function useMapControls(svgRef: RefObject<SVGSVGElement | null>) {
   const [theme, setTheme] = useState<ThemeMode>("system");
   const [playback, setPlayback] = useState<PlaybackMode>("auto");
@@ -32,6 +46,12 @@ export function useMapControls(svgRef: RefObject<SVGSVGElement | null>) {
     getReducedMotionSnapshot,
     getReducedMotionServerSnapshot,
   );
+  const systemIsDark = useSyncExternalStore(
+    subscribeToColorScheme,
+    getColorSchemeSnapshot,
+    getColorSchemeServerSnapshot,
+  );
+  const isDark = theme === "dark" || (theme === "system" && systemIsDark);
   const isPlaying =
     playback === "playing" ||
     (playback === "auto" && !prefersReducedMotion);
@@ -56,9 +76,6 @@ export function useMapControls(svgRef: RefObject<SVGSVGElement | null>) {
 
   const toggleTheme = () => {
     if (theme === "system") {
-      const systemIsDark = window.matchMedia(
-        "(prefers-color-scheme: dark)",
-      ).matches;
       setTheme(systemIsDark ? "light" : "dark");
       return;
     }
@@ -67,6 +84,7 @@ export function useMapControls(svgRef: RefObject<SVGSVGElement | null>) {
 
   return {
     theme,
+    isDark,
     isPlaying,
     prefersReducedMotion,
     togglePlayback,

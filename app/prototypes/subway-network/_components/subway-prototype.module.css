@@ -18,6 +18,10 @@
   isolation: isolate;
 }
 
+.prototypeStage {
+  min-height: 100svh;
+}
+
 .experience[data-theme="dark"] {
   --canvas: oklch(0.16 0.014 250);
   --land: oklch(0.205 0.014 250);
@@ -49,7 +53,7 @@
 .boroughsExperience {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  padding: 28px 32px 24px;
+  padding: 28px 32px 84px;
 }
 
 .boroughsHeader {
@@ -296,6 +300,318 @@
   font-weight: 580;
 }
 
+.diagramExperience {
+  display: grid;
+  grid-template-columns: minmax(238px, 284px) minmax(0, 1fr);
+  gap: 26px;
+  padding: 20px 28px 84px;
+}
+
+.diagramRail {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 28px;
+  padding: 16px 26px 16px 4px;
+  border-right: 1px solid var(--border);
+}
+
+.diagramIntro {
+  display: grid;
+  gap: 8px;
+}
+
+.diagramIntro .eyebrow {
+  margin: 0;
+}
+
+.diagramIntro h1 {
+  max-width: 8ch;
+  margin: 0;
+  font-size: clamp(28px, 2.7vw, 42px);
+  font-weight: 590;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.diagramIntro > p:last-child {
+  max-width: 26ch;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.diagramRail .routeLegend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.diagramRail .legendFamily {
+  font-size: 11px;
+}
+
+.diagramRail .legendMark {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+
+.diagramStats {
+  display: grid;
+  gap: 0;
+  margin: auto 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.diagramStats div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.diagramStats dt,
+.diagramStats dd {
+  margin: 0;
+  font-size: 11px;
+}
+
+.diagramStats dt {
+  color: var(--muted);
+}
+
+.diagramStats dd {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-weight: 580;
+}
+
+.diagramControls {
+  justify-self: start;
+}
+
+.diagramControls .reducedMotionNote {
+  right: auto;
+  left: 0;
+}
+
+.diagramCanvas {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+}
+
+.diagramCanvas .networkMap {
+  max-width: 1320px;
+  max-height: calc(100svh - 120px);
+}
+
+.diagramTopline {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  right: 6px;
+  left: 6px;
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 560;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.diagramMap .boroughShape {
+  fill: transparent;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.diagramMap .routeCasingLayer path {
+  stroke-width: 11;
+}
+
+.diagramMap .routeLayer path {
+  stroke-width: 6.5;
+}
+
+.diagramMap .stationLayer circle {
+  stroke-width: 1.7;
+}
+
+.diagramBoroughLabels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.diagramBoroughLabels span {
+  position: absolute;
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 620;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.diagramBoroughLabels span:nth-child(1) {
+  top: 19%;
+  left: 52%;
+}
+
+.diagramBoroughLabels span:nth-child(2) {
+  top: 43%;
+  left: 35%;
+  transform: rotate(-72deg);
+}
+
+.diagramBoroughLabels span:nth-child(3) {
+  top: 39%;
+  left: 77%;
+}
+
+.diagramBoroughLabels span:nth-child(4) {
+  top: 75%;
+  left: 68%;
+}
+
+.flowExperience {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 28px 32px 84px;
+}
+
+.flowHeader {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 24px;
+}
+
+.flowHeader h1 {
+  max-width: 15ch;
+  margin: 0;
+  font-size: clamp(22px, 2vw, 30px);
+  font-weight: 580;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.flowStatus {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.flowCanvas {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+}
+
+.flowCanvas .networkMap {
+  width: min(100%, 1220px);
+  max-height: calc(100svh - 180px);
+}
+
+.flowMap .boroughLabelLayer {
+  display: none;
+}
+
+.flowMap .boroughShape {
+  fill: transparent;
+  opacity: 0.8;
+}
+
+.flowMap .routeCasingLayer path {
+  stroke-width: 10;
+}
+
+.flowMap .routeLayer path {
+  stroke-width: 4.5;
+  opacity: 0.74;
+}
+
+.flowTrain {
+  filter: drop-shadow(0 2px 2px oklch(0.1 0.01 250 / 0.28));
+}
+
+.flowTrain text {
+  font-size: 10px;
+}
+
+.flowFooter {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 24px;
+  padding-bottom: 16px;
+}
+
+.flowMetric {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.flowMetricValue {
+  color: var(--ink);
+  font-size: 26px;
+  font-weight: 560;
+  letter-spacing: -0.04em;
+  line-height: 0.8;
+}
+
+.flowRouteMarks {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.flowRouteMarks span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 580;
+}
+
+.flowRouteMarks i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.flowFooter p {
+  justify-self: end;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: right;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .iconButton:hover {
     background: var(--control-hover);
@@ -334,6 +650,88 @@
   .boroughLabelLayer text {
     font-size: 15px;
   }
+
+  .diagramExperience {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+    padding: 18px 18px calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .diagramRail {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: start;
+    gap: 14px;
+    padding: 0 0 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .diagramIntro {
+    gap: 3px;
+  }
+
+  .diagramIntro h1 {
+    max-width: none;
+    font-size: 22px;
+  }
+
+  .diagramIntro > p:last-child,
+  .diagramRail .routeLegend,
+  .diagramStats {
+    display: none;
+  }
+
+  .diagramControls {
+    justify-self: end;
+  }
+
+  .diagramCanvas {
+    margin: 0 -76px;
+  }
+
+  .diagramCanvas .networkMap {
+    max-height: calc(100svh - 170px);
+  }
+
+  .diagramTopline,
+  .diagramBoroughLabels {
+    display: none;
+  }
+
+  .flowExperience {
+    padding: 20px 18px calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .flowHeader {
+    grid-template-columns: 1fr auto;
+  }
+
+  .flowHeader h1 {
+    font-size: 20px;
+  }
+
+  .flowStatus {
+    display: none;
+  }
+
+  .flowCanvas {
+    margin: 0 -68px;
+  }
+
+  .flowCanvas .networkMap {
+    max-height: calc(100svh - 196px);
+  }
+
+  .flowFooter {
+    grid-template-columns: 1fr auto;
+  }
+
+  .flowRouteMarks span:nth-child(even),
+  .flowFooter p {
+    display: none;
+  }
 }
 
 @media (max-height: 620px) and (orientation: landscape) {
@@ -347,6 +745,20 @@
 
   .boroughsMap {
     max-height: calc(100svh - 76px);
+  }
+
+  .diagramExperience,
+  .flowExperience {
+    padding-block: 12px 70px;
+  }
+
+  .diagramCanvas .networkMap,
+  .flowCanvas .networkMap {
+    max-height: calc(100svh - 90px);
+  }
+
+  .flowFooter {
+    display: none;
   }
 }
 

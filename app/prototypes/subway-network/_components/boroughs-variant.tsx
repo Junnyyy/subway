@@ -9,7 +9,6 @@ import { useMapControls } from "./use-map-controls";
 export function BoroughsVariant() {
   const svgRef = useRef<SVGSVGElement>(null);
   const controls = useMapControls(svgRef);
-  const dark = controls.theme === "dark";
 
   return (
     <main
@@ -27,7 +26,7 @@ export function BoroughsVariant() {
         </div>
         <MapControls
           isPlaying={controls.isPlaying}
-          isDark={dark}
+          isDark={controls.isDark}
           prefersReducedMotion={controls.prefersReducedMotion}
           onTogglePlayback={controls.togglePlayback}
           onToggleTheme={controls.toggleTheme}
