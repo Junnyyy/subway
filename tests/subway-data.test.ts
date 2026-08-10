@@ -36,6 +36,17 @@ test("generated map preserves the selected sparse landmark composition", () => {
   assert.deepEqual(map.viewBox, [1200, 820]);
   assert.ok(map.shapes.length >= 250);
   assert.equal(map.landmarks.length, 19);
+  const parkCoordinates = (map.parks.match(/-?\d+(?:\.\d+)?/g) ?? [])
+    .map(Number)
+    .reduce<Array<[number, number]>>((points, value, index, values) => {
+      if (index % 2 === 0) points.push([value, values[index + 1]]);
+      return points;
+    }, []);
+  assert.equal(
+    parkCoordinates.some(([x, y]) => x < 280 && y > 600),
+    false,
+    "main-map parks must not leak into the Staten Island inset",
+  );
   assert.deepEqual(
     map.landmarks
       .filter((landmark) => ["117", "A32", "E01"].includes(landmark.id))

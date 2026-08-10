@@ -105,6 +105,10 @@ function rawPoint([longitude, latitude]) {
   };
 }
 
+function isStatenIslandCoordinate(coordinate) {
+  return coordinate?.[0] < -74.05 && coordinate?.[1] < 40.66;
+}
+
 function boundsFor(points) {
   return points.reduce(
     (bounds, point) => ({
@@ -226,7 +230,7 @@ async function build() {
     if (feature.properties.carto_display_level !== "10") continue;
     for (const line of lineStrings(feature.geometry)) {
       const middle = line[Math.floor(line.length / 2)];
-      if (middle?.[0] < -74.05 && middle?.[1] < 40.66) {
+      if (isStatenIslandCoordinate(middle)) {
         statenArterialLines.push(line);
       } else {
         arterialLines.push(line);
@@ -240,6 +244,8 @@ async function build() {
   const parkRings = [];
   for (const feature of parkGeoJson.features) {
     for (const ring of polygonRings(feature.geometry)) {
+      const middle = ring[Math.floor(ring.length / 2)];
+      if (isStatenIslandCoordinate(middle)) continue;
       if (polygonArea(ring.map(projectMain)) > 2.2) parkRings.push(ring);
     }
   }
