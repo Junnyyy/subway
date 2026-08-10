@@ -1,7 +1,11 @@
 "use client";
 
 import {
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
+  type WheelEvent as ReactWheelEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -52,20 +56,65 @@ const palette = {
     inset: "rgba(253, 252, 249, 0.82)",
   },
   dark: {
-    water: "#171d23",
-    land: "#222a31",
-    park: "#24382f",
-    parkStroke: "rgba(111, 160, 122, 0.22)",
-    ink: "#eef2f4",
-    muted: "#a4adb4",
-    faint: "#6f7981",
-    hairline: "rgba(238, 242, 244, 0.12)",
-    street: "rgba(177, 186, 193, 0.37)",
-    localStreet: "rgba(152, 163, 172, 0.22)",
-    casing: "rgba(20, 26, 31, 0.9)",
-    inset: "rgba(34, 42, 49, 0.84)",
+    water: "#060709",
+    land: "#111417",
+    park: "#14251a",
+    parkStroke: "rgba(110, 166, 122, 0.2)",
+    ink: "#f1f3f4",
+    muted: "#9ca4aa",
+    faint: "#545d64",
+    hairline: "rgba(241, 243, 244, 0.1)",
+    street: "rgba(178, 186, 192, 0.28)",
+    localStreet: "rgba(158, 168, 176, 0.16)",
+    casing: "rgba(5, 6, 8, 0.94)",
+    inset: "rgba(13, 15, 18, 0.96)",
   },
 } as const;
+
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 3;
+const ZOOM_STEP = 1.35;
+
+type ViewState = {
+  zoom: number;
+  panX: number;
+  panY: number;
+};
+
+type Point = {
+  x: number;
+  y: number;
+};
+
+type Gesture =
+  | {
+      kind: "drag";
+      pointerId: number;
+      start: Point;
+      startPan: Point;
+    }
+  | {
+      kind: "pinch";
+      pointerIds: [number, number];
+      startDistance: number;
+      startZoom: number;
+      worldPoint: Point;
+    };
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+function pointDistance(first: Point, second: Point) {
+  return Math.hypot(second.x - first.x, second.y - first.y);
+}
+
+function pointMidpoint(first: Point, second: Point) {
+  return {
+    x: (first.x + second.x) / 2,
+    y: (first.y + second.y) / 2,
+  };
+}
 
 function resizeCanvas(
   canvas: HTMLCanvasElement,
@@ -343,11 +392,231 @@ export function TransitMap({
   onStats: (stats: SceneStats) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const viewportLayerRef = useRef<HTMLDivElement>(null);
   const staticCanvasRef = useRef<HTMLCanvasElement>(null);
   const trainCanvasRef = useRef<HTMLCanvasElement>(null);
+  const zoomLabelRef = useRef<HTMLSpanElement>(null);
+  const zoomOutRef = useRef<HTMLButtonElement>(null);
+  const zoomResetRef = useRef<HTMLButtonElement>(null);
+  const zoomInRef = useRef<HTMLButtonElement>(null);
   const size = useCanvasSize(containerRef);
   const clockRef = useRef({ seconds: modelClock.seconds, capturedAt: 0 });
   const statsRef = useRef({ signature: "", reportedAt: 0 });
+  const viewRef = useRef<ViewState>({ zoom: 1, panX: 0, panY: 0 });
+  const pointersRef = useRef(new Map<number, Point>());
+  const gestureRef = useRef<Gesture | null>(null);
+  const reducedSnapshotMinute = isPlaying
+    ? 0
+    : Math.floor(modelClock.seconds / 60);
+
+  const constrainView = useCallback(
+    (view: ViewState): ViewState => {
+      const zoom = clamp(view.zoom, MIN_ZOOM, MAX_ZOOM);
+      const maximumPanX = (size.width * (zoom - 1)) / 2;
+      const maximumPanY = (size.height * (zoom - 1)) / 2;
+      return {
+        zoom,
+        panX: clamp(view.panX, -maximumPanX, maximumPanX),
+        panY: clamp(view.panY, -maximumPanY, maximumPanY),
+      };
+    },
+    [size.height, size.width],
+  );
+
+  const applyView = useCallback(
+    (candidate: ViewState) => {
+      const view = constrainView(candidate);
+      viewRef.current = view;
+      const layer = viewportLayerRef.current;
+      if (layer) {
+        layer.style.transform =
+          view.zoom === 1
+            ? "none"
+            : `translate3d(${view.panX.toFixed(2)}px, ${view.panY.toFixed(2)}px, 0) scale(${view.zoom.toFixed(4)})`;
+      }
+      const percentage = Math.round(view.zoom * 100);
+      if (zoomLabelRef.current) {
+        zoomLabelRef.current.textContent = `${percentage}%`;
+      }
+      if (zoomOutRef.current) zoomOutRef.current.disabled = view.zoom <= MIN_ZOOM;
+      if (zoomResetRef.current) zoomResetRef.current.disabled = view.zoom <= MIN_ZOOM;
+      if (zoomInRef.current) zoomInRef.current.disabled = view.zoom >= MAX_ZOOM;
+      if (containerRef.current) {
+        containerRef.current.dataset.zoomed = String(view.zoom > MIN_ZOOM);
+      }
+    },
+    [constrainView],
+  );
+
+  const pointFromClient = (clientX: number, clientY: number): Point => {
+    const bounds = containerRef.current?.getBoundingClientRect();
+    if (!bounds) return { x: 0, y: 0 };
+    return {
+      x: clientX - bounds.left - bounds.width / 2,
+      y: clientY - bounds.top - bounds.height / 2,
+    };
+  };
+
+  const zoomAround = (nextZoom: number, focalPoint: Point = { x: 0, y: 0 }) => {
+    const current = viewRef.current;
+    const zoom = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
+    const worldPoint = {
+      x: (focalPoint.x - current.panX) / current.zoom,
+      y: (focalPoint.y - current.panY) / current.zoom,
+    };
+    applyView({
+      zoom,
+      panX: focalPoint.x - worldPoint.x * zoom,
+      panY: focalPoint.y - worldPoint.y * zoom,
+    });
+  };
+
+  const panBy = (x: number, y: number) => {
+    const current = viewRef.current;
+    applyView({
+      ...current,
+      panX: current.panX + x,
+      panY: current.panY + y,
+    });
+  };
+
+  const resetView = () => applyView({ zoom: 1, panX: 0, panY: 0 });
+
+  const beginPinch = () => {
+    const pointers = [...pointersRef.current.entries()].slice(0, 2);
+    if (pointers.length < 2) return;
+    const [[firstId, first], [secondId, second]] = pointers;
+    const midpoint = pointMidpoint(first, second);
+    const current = viewRef.current;
+    gestureRef.current = {
+      kind: "pinch",
+      pointerIds: [firstId, secondId],
+      startDistance: Math.max(pointDistance(first, second), 1),
+      startZoom: current.zoom,
+      worldPoint: {
+        x: (midpoint.x - current.panX) / current.zoom,
+        y: (midpoint.y - current.panY) / current.zoom,
+      },
+    };
+    if (containerRef.current) containerRef.current.dataset.dragging = "true";
+  };
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (
+      event.pointerType === "mouse" &&
+      (!event.isPrimary || event.button !== 0)
+    ) {
+      return;
+    }
+    const point = pointFromClient(event.clientX, event.clientY);
+    pointersRef.current.set(event.pointerId, point);
+    event.currentTarget.setPointerCapture(event.pointerId);
+    if (event.pointerType === "mouse") {
+      event.currentTarget.focus({ preventScroll: true });
+    }
+    if (pointersRef.current.size >= 2) {
+      beginPinch();
+      return;
+    }
+    if (viewRef.current.zoom > MIN_ZOOM) {
+      gestureRef.current = {
+        kind: "drag",
+        pointerId: event.pointerId,
+        start: point,
+        startPan: {
+          x: viewRef.current.panX,
+          y: viewRef.current.panY,
+        },
+      };
+      if (containerRef.current) containerRef.current.dataset.dragging = "true";
+    }
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!pointersRef.current.has(event.pointerId)) return;
+    const point = pointFromClient(event.clientX, event.clientY);
+    pointersRef.current.set(event.pointerId, point);
+    const gesture = gestureRef.current;
+    if (!gesture) return;
+    event.preventDefault();
+
+    if (gesture.kind === "drag" && gesture.pointerId === event.pointerId) {
+      applyView({
+        ...viewRef.current,
+        panX: gesture.startPan.x + point.x - gesture.start.x,
+        panY: gesture.startPan.y + point.y - gesture.start.y,
+      });
+      return;
+    }
+
+    if (gesture.kind === "pinch") {
+      const first = pointersRef.current.get(gesture.pointerIds[0]);
+      const second = pointersRef.current.get(gesture.pointerIds[1]);
+      if (!first || !second) return;
+      const midpoint = pointMidpoint(first, second);
+      const zoom = clamp(
+        gesture.startZoom *
+          (pointDistance(first, second) / gesture.startDistance),
+        MIN_ZOOM,
+        MAX_ZOOM,
+      );
+      applyView({
+        zoom,
+        panX: midpoint.x - gesture.worldPoint.x * zoom,
+        panY: midpoint.y - gesture.worldPoint.y * zoom,
+      });
+    }
+  };
+
+  const finishPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    const remaining = [...pointersRef.current.entries()][0];
+    if (remaining && viewRef.current.zoom > MIN_ZOOM) {
+      gestureRef.current = {
+        kind: "drag",
+        pointerId: remaining[0],
+        start: remaining[1],
+        startPan: {
+          x: viewRef.current.panX,
+          y: viewRef.current.panY,
+        },
+      };
+      return;
+    }
+    gestureRef.current = null;
+    if (containerRef.current) containerRef.current.dataset.dragging = "false";
+  };
+
+  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const focalPoint = pointFromClient(event.clientX, event.clientY);
+    zoomAround(
+      viewRef.current.zoom * Math.exp(-event.deltaY * 0.0015),
+      focalPoint,
+    );
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const key = event.key;
+    if (key === "+" || key === "=") {
+      zoomAround(viewRef.current.zoom * ZOOM_STEP);
+    } else if (key === "-") {
+      zoomAround(viewRef.current.zoom / ZOOM_STEP);
+    } else if (key === "0") {
+      resetView();
+    } else if (key === "ArrowLeft") {
+      panBy(48, 0);
+    } else if (key === "ArrowRight") {
+      panBy(-48, 0);
+    } else if (key === "ArrowUp") {
+      panBy(0, 48);
+    } else if (key === "ArrowDown") {
+      panBy(0, -48);
+    } else {
+      return;
+    }
+    event.preventDefault();
+  };
 
   useEffect(() => {
     clockRef.current = {
@@ -355,6 +624,10 @@ export function TransitMap({
       capturedAt: performance.now(),
     };
   }, [modelClock.seconds, modelClock.serviceDate]);
+
+  useEffect(() => {
+    applyView(viewRef.current);
+  }, [applyView]);
 
   useEffect(() => {
     if (!scene || !staticCanvasRef.current || size.width < 2 || size.height < 2) {
@@ -421,17 +694,88 @@ export function TransitMap({
       if (animationFrame) cancelAnimationFrame(animationFrame);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [isPlaying, onStats, routes, scene, size.height, size.width]);
+  }, [
+    isPlaying,
+    onStats,
+    reducedSnapshotMinute,
+    routes,
+    scene,
+    size.height,
+    size.width,
+  ]);
 
   return (
-    <div className={styles.canvasStack} ref={containerRef}>
-      <canvas className={styles.mapCanvas} ref={staticCanvasRef} aria-hidden="true" />
-      <canvas
-        className={styles.trainCanvas}
-        ref={trainCanvasRef}
-        role="img"
-        aria-label="Animated scheduled subway trains moving across a generalized map of New York City"
-      />
+    <div
+      className={styles.canvasStack}
+      ref={containerRef}
+      data-zoomed="false"
+      data-dragging="false"
+    >
+      <div
+        className={styles.mapViewportLayer}
+        ref={viewportLayerRef}
+        role="region"
+        tabIndex={0}
+        aria-label="Interactive subway map. Use the zoom controls, plus and minus keys, arrow keys to move, or zero to reset."
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishPointer}
+        onPointerCancel={finishPointer}
+        onWheel={handleWheel}
+        onKeyDown={handleKeyDown}
+        onDoubleClick={(event) =>
+          zoomAround(
+            viewRef.current.zoom * ZOOM_STEP,
+            pointFromClient(event.clientX, event.clientY),
+          )
+        }
+      >
+        <canvas
+          className={styles.mapCanvas}
+          ref={staticCanvasRef}
+          aria-hidden="true"
+        />
+        <canvas
+          className={styles.trainCanvas}
+          ref={trainCanvasRef}
+          role="img"
+          aria-label="Animated scheduled subway trains moving across a generalized map of New York City"
+        />
+      </div>
+      <div className={styles.zoomHud}>
+        <span className={styles.zoomHint} aria-hidden="true">
+          Scroll to zoom · drag to move
+        </span>
+        <div className={styles.zoomControls} role="group" aria-label="Map zoom">
+          <button
+            className={styles.zoomButton}
+            ref={zoomOutRef}
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => zoomAround(viewRef.current.zoom / ZOOM_STEP)}
+          >
+            <span aria-hidden="true">−</span>
+          </button>
+          <button
+            className={styles.zoomReset}
+            ref={zoomResetRef}
+            type="button"
+            aria-label="Reset map view"
+            onClick={resetView}
+          >
+            <span ref={zoomLabelRef} data-initial-label="100%" />
+          </button>
+          <button
+            className={styles.zoomButton}
+            ref={zoomInRef}
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => zoomAround(viewRef.current.zoom * ZOOM_STEP)}
+          >
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

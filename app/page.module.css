@@ -17,14 +17,14 @@
 }
 
 .experience[data-theme="dark"] {
-  --water: #171d23;
-  --ink: #eef2f4;
-  --muted: #a4adb4;
-  --faint: #6f7981;
-  --hairline: rgb(238 242 244 / 12%);
-  --panel: rgb(28 35 41 / 95%);
-  --control: rgb(34 42 49 / 96%);
-  --control-hover: #303941;
+  --water: #060709;
+  --ink: #f1f3f4;
+  --muted: #9ca4aa;
+  --faint: #545d64;
+  --hairline: rgb(241 243 244 / 10%);
+  --panel: rgb(8 9 11 / 97%);
+  --control: rgb(15 17 20 / 98%);
+  --control-hover: #171b1f;
 }
 
 .rail {
@@ -207,11 +207,6 @@
   stroke-width: 1.5;
 }
 
-.iconButton svg path[d*="Z"] {
-  fill: currentColor;
-  stroke: none;
-}
-
 .iconButton:active {
   transform: scale(0.96);
 }
@@ -219,13 +214,6 @@
 .iconButton:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
-}
-
-.motionNote {
-  align-self: center;
-  margin-left: 4px;
-  color: var(--muted);
-  font-size: 10px;
 }
 
 .disclosure {
@@ -270,6 +258,30 @@
 .canvasStack {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.mapViewportLayer {
+  position: absolute;
+  inset: 0;
+  outline: none;
+  touch-action: none;
+  transform-origin: center;
+  user-select: none;
+}
+
+.canvasStack[data-zoomed="true"] .mapViewportLayer {
+  cursor: grab;
+}
+
+.canvasStack[data-dragging="true"] .mapViewportLayer {
+  cursor: grabbing;
+}
+
+.mapViewportLayer:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -5px;
 }
 
 .mapCanvas,
@@ -279,10 +291,90 @@
   display: block;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 }
 
-.trainCanvas {
+.zoomHud {
+  position: absolute;
+  z-index: 3;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
   pointer-events: none;
+}
+
+.zoomHint {
+  padding: 7px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--control);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 590;
+  letter-spacing: 0.01em;
+}
+
+.zoomControls {
+  display: grid;
+  grid-template-columns: 44px 54px 44px;
+  height: 44px;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  background: var(--control);
+  pointer-events: auto;
+}
+
+.zoomButton,
+.zoomReset {
+  display: grid;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.zoomButton {
+  width: 44px;
+  font-size: 20px;
+  font-weight: 420;
+  line-height: 1;
+}
+
+.zoomReset {
+  width: 54px;
+  border-inline: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+.zoomReset span:empty::before {
+  content: attr(data-initial-label);
+}
+
+.zoomButton:disabled,
+.zoomReset:disabled {
+  color: var(--faint);
+  cursor: default;
+  opacity: 0.52;
+}
+
+.zoomButton:focus-visible,
+.zoomReset:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline: 2px solid var(--ink);
+  outline-offset: -3px;
 }
 
 .loading {
@@ -308,8 +400,13 @@
   border: 0;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
   .iconButton:hover {
+    background: var(--control-hover);
+  }
+
+  .zoomButton:hover:not(:disabled),
+  .zoomReset:hover:not(:disabled) {
     background: var(--control-hover);
   }
 }
@@ -356,7 +453,7 @@
   }
 
   .intro {
-    padding-right: 104px;
+    padding-right: 56px;
   }
 
   .intro .eyebrow {
@@ -414,7 +511,6 @@
 
   .disclosure {
     margin-top: 13px;
-    padding-right: 100px;
   }
 
   .mapPanel {
@@ -430,10 +526,21 @@
   .mapTopline span:last-child {
     display: none;
   }
+
+  .zoomHud {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .zoomHint {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .iconButton {
+  .iconButton,
+  .zoomButton,
+  .zoomReset {
     transition: background-color 150ms ease-out;
   }
 

@@ -55,6 +55,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   tests, and builds; do not substitute npm or Corepack commands.
 - The production route renders the geographic base and moving trains on two
   canvas layers: static cartography redraws only for resize/theme changes while
-  the train layer samples schedule keyframes outside React state. The default
-  clock follows `America/New_York`; pause freezes the model and resume returns
-  to now, while `prefers-reduced-motion` starts on a paused representative frame.
+  the train layer samples schedule keyframes outside React state. The clock
+  always follows `America/New_York`; `prefers-reduced-motion` uses minute-based
+  snapshots instead of continuous train motion, without adding playback UI.
+- Map inspection uses a single composite transform around both canvas layers:
+  1–3× button, wheel, keyboard, and pinch zoom plus pointer or arrow-key pan.
+  Keep gesture updates out of React state so interaction does not redraw the
+  static city layer. Dark mode intentionally uses near-black water and chrome
+  with subtly lighter land, streets, and parks rather than a blue-gray wash.
