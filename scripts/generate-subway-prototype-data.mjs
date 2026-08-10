@@ -116,16 +116,40 @@ const placeDefinitions = [
 ];
 
 const hubDefinitions = [
-  "Times Sq-42 St",
-  "Grand Central-42 St",
-  "34 St-Herald Sq",
-  "14 St-Union Sq",
-  "Fulton St",
-  "Atlantic Av-Barclays Ctr",
-  "Court Sq",
-  "Jackson Hts-Roosevelt Av",
-  "Jamaica Center-Parsons/Archer",
-  "Coney Island-Stillwell Av",
+  { id: "127", label: "Times Sq–42 St", dx: -11, dy: -7, anchor: "end" },
+  {
+    id: "631",
+    label: "Grand Central–42 St",
+    dx: 12,
+    dy: -4,
+    anchor: "start",
+  },
+  { id: "D17", label: "34 St–Herald Sq", dx: -11, dy: 7, anchor: "end" },
+  { id: "635", label: "14 St–Union Sq", dx: 12, dy: 10, anchor: "start" },
+  { id: "A38", label: "Fulton St", dx: -11, dy: 11, anchor: "end" },
+  {
+    id: "D24",
+    label: "Atlantic Av–Barclays",
+    dx: 12,
+    dy: 11,
+    anchor: "start",
+  },
+  { id: "G22", label: "Court Sq", dx: 12, dy: -8, anchor: "start" },
+  {
+    id: "G14",
+    label: "Jackson Hts–Roosevelt Av",
+    dx: 12,
+    dy: -7,
+    anchor: "start",
+  },
+  { id: "G05", label: "Jamaica Center", dx: 12, dy: -7, anchor: "start" },
+  { id: "D43", label: "Coney Island–Stillwell Av", dx: 12, dy: 11, anchor: "start" },
+  { id: "A24", label: "Columbus Circle", dx: -12, dy: -7, anchor: "end" },
+  { id: "A15", label: "125 St", dx: -12, dy: -7, anchor: "end" },
+  { id: "414", label: "Yankee Stadium", dx: 12, dy: -7, anchor: "start" },
+  { id: "A41", label: "Jay St–MetroTech", dx: -12, dy: 11, anchor: "end" },
+  { id: "A51", label: "Broadway Junction", dx: 12, dy: -7, anchor: "start" },
+  { id: "701", label: "Flushing–Main St", dx: 12, dy: -7, anchor: "start" },
 ];
 
 function readJson(file) {
@@ -509,15 +533,23 @@ const stations = stops
     y: Number(station.y.toFixed(1)),
   }));
 
-const stationByName = new Map(stations.map((station) => [station.name, station]));
+const stationById = new Map(stations.map((station) => [station.id, station]));
 const hubs = hubDefinitions
-  .map((name) => stationByName.get(name))
-  .filter(Boolean)
-  .map((station) => ({
-    name: station.name,
-    x: station.x,
-    y: station.y,
-  }));
+  .map((definition) => {
+    const station = stationById.get(definition.id);
+    if (!station) return null;
+    return {
+      id: definition.id,
+      name: station.name,
+      label: definition.label,
+      x: station.x,
+      y: station.y,
+      dx: definition.dx,
+      dy: definition.dy,
+      anchor: definition.anchor,
+    };
+  })
+  .filter(Boolean);
 
 const places = placeDefinitions.map(([name, longitude, latitude]) => ({
   name,

@@ -109,24 +109,43 @@ export function CityMap({ density, svgRef, className = "" }: CityMapProps) {
       </g>
 
       <g className={styles.stationLayer} aria-hidden="true">
-        {(showAllStations ? cityMapData.stations : cityMapData.hubs).map((station) => (
-          <circle
-            key={"id" in station ? station.id : `${station.name}-${station.x}-${station.y}`}
-            cx={station.x}
-            cy={station.y}
-            r={showAllStations ? 1.35 : 3.4}
-          />
-        ))}
+        {showAllStations
+          ? cityMapData.stations.map((station) => (
+              <circle
+                key={station.id}
+                cx={station.x}
+                cy={station.y}
+                r="1.35"
+              />
+            ))
+          : cityMapData.hubs.map((station) => (
+              <circle
+                key={station.id}
+                cx={station.x}
+                cy={station.y}
+                r="3.4"
+              />
+            ))}
       </g>
 
       {density !== "quiet" ? (
         <g className={styles.hubLabelLayer} aria-hidden="true">
           {cityMapData.hubs.map((hub) => (
-            <text key={hub.name} x={hub.x + 7} y={hub.y - 7}>
-              {hub.name
-                .replace("-Parsons/Archer", "")
-                .replace("-Barclays Ctr", "")}
-            </text>
+            <g key={hub.id}>
+              <line
+                x1={hub.x}
+                y1={hub.y}
+                x2={hub.x + hub.dx * 0.72}
+                y2={hub.y + hub.dy * 0.72}
+              />
+              <text
+                x={hub.x + hub.dx}
+                y={hub.y + hub.dy}
+                textAnchor={hub.anchor}
+              >
+                {hub.label}
+              </text>
+            </g>
           ))}
         </g>
       ) : null}

@@ -218,6 +218,13 @@
   font-weight: 610;
 }
 
+.hubLabelLayer line {
+  stroke: var(--muted);
+  stroke-opacity: 0.5;
+  stroke-width: 0.55;
+  vector-effect: non-scaling-stroke;
+}
+
 .routeCasingLayer path,
 .routeLayer path,
 .insetRoute,
