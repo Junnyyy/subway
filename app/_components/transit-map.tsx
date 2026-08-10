@@ -133,16 +133,23 @@ function resizeCanvas(
   return context;
 }
 
-function mapTransform(width: number, height: number, map: SubwayMapData) {
+function mapTransform(
+  width: number,
+  height: number,
+  map: SubwayMapData,
+  camera: ViewState,
+) {
   const mobile = width < 640;
   const view = mobile
     ? { x: 235, y: 88, width: 555, height: 720 }
     : { x: 0, y: 0, width: map.viewBox[0], height: map.viewBox[1] };
-  const scale = Math.min(width / view.width, height / view.height);
+  const baseScale = Math.min(width / view.width, height / view.height);
+  const baseX = (width - view.width * baseScale) / 2 - view.x * baseScale;
+  const baseY = (height - view.height * baseScale) / 2 - view.y * baseScale;
   return {
-    scale,
-    x: (width - view.width * scale) / 2 - view.x * scale,
-    y: (height - view.height * scale) / 2 - view.y * scale,
+    scale: baseScale * camera.zoom,
+    x: width / 2 + camera.panX + camera.zoom * (baseX - width / 2),
+    y: height / 2 + camera.panY + camera.zoom * (baseY - height / 2),
   };
 }
 
@@ -169,11 +176,12 @@ function drawStaticMap(
   dark: boolean,
   width: number,
   height: number,
+  camera: ViewState,
 ) {
   const context = resizeCanvas(canvas, width, height);
   if (!context) return;
   const colors = dark ? palette.dark : palette.light;
-  const transform = mapTransform(width, height, map);
+  const transform = mapTransform(width, height, map, camera);
   const mobile = width < 640;
   const routeById = new Map(routes.map((route) => [route.id, route]));
   const strokeWidth = (value: number) => value / transform.scale;
@@ -200,7 +208,6 @@ function drawStaticMap(
       "M32 606H260A12 12 0 0 1 272 618V778A12 12 0 0 1 260 790H32A12 12 0 0 1 20 778V618A12 12 0 0 1 32 606Z",
     );
     context.fill(inset);
-    context.stroke(inset);
     const statenIsland = new Path2D(map.statenIsland.path);
     context.fillStyle = colors.land;
     context.fill(statenIsland, "evenodd");
@@ -228,13 +235,13 @@ function drawStaticMap(
   }
 
   context.strokeStyle = colors.casing;
-  context.lineWidth = strokeWidth(8.5);
+  context.lineWidth = strokeWidth(6.2);
   for (const shape of map.shapes) {
     if (mobile && shape.routeId === "SI") continue;
     traceShape(context, shape.points);
     context.stroke();
   }
-  context.lineWidth = strokeWidth(5);
+  context.lineWidth = strokeWidth(3.4);
   for (const shape of map.shapes) {
     if (mobile && shape.routeId === "SI") continue;
     const route = routeById.get(shape.routeId);
@@ -299,10 +306,11 @@ function drawTrains(
   width: number,
   height: number,
   seconds: number,
+  camera: ViewState,
 ) {
   const context = resizeCanvas(canvas, width, height);
   if (!context) return { total: 0, byRoute: {} };
-  const transform = mapTransform(width, height, scene.map);
+  const transform = mapTransform(width, height, scene.map, camera);
   const mobile = width < 640;
   const routeById = new Map(routes.map((route) => [route.id, route]));
   const fontFamily = getComputedStyle(canvas).fontFamily;
@@ -334,7 +342,7 @@ function drawTrains(
       context.arc(
         position.x,
         position.y,
-        (mobile ? 7.1 : 7.8) / transform.scale,
+        (mobile ? 6.1 : 6.5) / transform.scale,
         0,
         Math.PI * 2,
       );
@@ -342,7 +350,7 @@ function drawTrains(
       context.fill();
       context.fillStyle = route.textColor;
       const fontSize =
-        (route.label.length > 1 ? 6.5 : mobile ? 8.5 : 9.5) / transform.scale;
+        (route.label.length > 1 ? 5.8 : mobile ? 7.7 : 8.3) / transform.scale;
       context.font = `700 ${fontSize}px ${fontFamily}`;
       context.fillText(route.label, position.x, position.y + 0.25 / transform.scale);
       total += 1;
@@ -403,11 +411,18 @@ export function TransitMap({
   const clockRef = useRef({ seconds: modelClock.seconds, capturedAt: 0 });
   const statsRef = useRef({ signature: "", reportedAt: 0 });
   const viewRef = useRef<ViewState>({ zoom: 1, panX: 0, panY: 0 });
+  const committedViewRef = useRef<ViewState>({ zoom: 1, panX: 0, panY: 0 });
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
+  const commitTimerRef = useRef<number | null>(null);
+  const renderInputsRef = useRef({ scene, routes, dark, size, isPlaying });
   const reducedSnapshotMinute = isPlaying
     ? 0
     : Math.floor(modelClock.seconds / 60);
+
+  useEffect(() => {
+    renderInputsRef.current = { scene, routes, dark, size, isPlaying };
+  }, [dark, isPlaying, routes, scene, size]);
 
   const constrainView = useCallback(
     (view: ViewState): ViewState => {
@@ -423,16 +438,76 @@ export function TransitMap({
     [size.height, size.width],
   );
 
+  const commitView = useCallback(() => {
+    if (commitTimerRef.current) {
+      window.clearTimeout(commitTimerRef.current);
+      commitTimerRef.current = null;
+    }
+    const view = viewRef.current;
+    const inputs = renderInputsRef.current;
+    committedViewRef.current = view;
+
+    if (
+      inputs.scene &&
+      staticCanvasRef.current &&
+      trainCanvasRef.current &&
+      inputs.size.width > 1 &&
+      inputs.size.height > 1
+    ) {
+      drawStaticMap(
+        staticCanvasRef.current,
+        inputs.scene.map,
+        inputs.routes,
+        inputs.dark,
+        inputs.size.width,
+        inputs.size.height,
+        view,
+      );
+      const frameTime = performance.now();
+      const elapsed = inputs.isPlaying
+        ? Math.max(0, frameTime - clockRef.current.capturedAt) / 1_000
+        : 0;
+      drawTrains(
+        trainCanvasRef.current,
+        inputs.scene,
+        inputs.routes,
+        inputs.size.width,
+        inputs.size.height,
+        clockRef.current.seconds + elapsed,
+        view,
+      );
+    }
+
+    if (viewportLayerRef.current) {
+      viewportLayerRef.current.style.transform = "none";
+    }
+  }, []);
+
+  const scheduleViewCommit = useCallback(() => {
+    if (commitTimerRef.current) {
+      window.clearTimeout(commitTimerRef.current);
+    }
+    commitTimerRef.current = window.setTimeout(commitView, 120);
+  }, [commitView]);
+
   const applyView = useCallback(
     (candidate: ViewState) => {
       const view = constrainView(candidate);
       viewRef.current = view;
       const layer = viewportLayerRef.current;
       if (layer) {
+        const committed = committedViewRef.current;
+        const relativeZoom = view.zoom / committed.zoom;
+        const relativePanX = view.panX - relativeZoom * committed.panX;
+        const relativePanY = view.panY - relativeZoom * committed.panY;
+        const isCommitted =
+          Math.abs(relativeZoom - 1) < 0.0001 &&
+          Math.abs(relativePanX) < 0.01 &&
+          Math.abs(relativePanY) < 0.01;
         layer.style.transform =
-          view.zoom === 1
+          isCommitted
             ? "none"
-            : `translate3d(${view.panX.toFixed(2)}px, ${view.panY.toFixed(2)}px, 0) scale(${view.zoom.toFixed(4)})`;
+            : `translate3d(${relativePanX.toFixed(2)}px, ${relativePanY.toFixed(2)}px, 0) scale(${relativeZoom.toFixed(4)})`;
       }
       const percentage = Math.round(view.zoom * 100);
       if (zoomLabelRef.current) {
@@ -444,8 +519,9 @@ export function TransitMap({
       if (containerRef.current) {
         containerRef.current.dataset.zoomed = String(view.zoom > MIN_ZOOM);
       }
+      scheduleViewCommit();
     },
-    [constrainView],
+    [constrainView, scheduleViewCommit],
   );
 
   const pointFromClient = (clientX: number, clientY: number): Point => {
@@ -627,7 +703,17 @@ export function TransitMap({
 
   useEffect(() => {
     applyView(viewRef.current);
-  }, [applyView]);
+    commitView();
+  }, [applyView, commitView]);
+
+  useEffect(
+    () => () => {
+      if (commitTimerRef.current) {
+        window.clearTimeout(commitTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!scene || !staticCanvasRef.current || size.width < 2 || size.height < 2) {
@@ -640,6 +726,7 @@ export function TransitMap({
       dark,
       size.width,
       size.height,
+      committedViewRef.current,
     );
   }, [dark, routes, scene, size.height, size.width]);
 
@@ -659,6 +746,7 @@ export function TransitMap({
         size.width,
         size.height,
         clockRef.current.seconds + elapsed,
+        committedViewRef.current,
       );
       const signature = `${nextStats.total}:${Object.entries(nextStats.byRoute)
         .map(([route, count]) => `${route}${count}`)

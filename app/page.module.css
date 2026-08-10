@@ -10,7 +10,7 @@
   display: grid;
   grid-template-columns: 278px minmax(0, 1fr);
   min-height: 100svh;
-  overflow: hidden;
+  overflow: clip;
   background: var(--water);
   color: var(--ink);
   isolation: isolate;
@@ -227,7 +227,7 @@
   position: relative;
   min-width: 0;
   min-height: 100svh;
-  overflow: hidden;
+  overflow: clip;
   background: var(--water);
 }
 
@@ -258,7 +258,7 @@
 .canvasStack {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
   overscroll-behavior: contain;
 }
 
