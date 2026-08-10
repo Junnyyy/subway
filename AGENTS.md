@@ -75,10 +75,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `passive: false` as well; relying on React's delegated wheel event can let the
   same gesture scroll the document. Prevent propagation only inside the map so
   scrolling over the sidebar and other page surfaces remains native.
-- Train motion wakes visualize the actual prior 30 seconds of each scheduled
+- Train motion wakes visualize the actual prior 75 seconds of each scheduled
   trip rather than increasing simulated speed. Keep them route-colored with a
-  thin contrasting core, omit wakes shorter than 1.5 screen px, and preserve
-  the reduced-motion minute snapshots.
+  thin contrasting core, omit wakes shorter than 1.5 screen px, and use the
+  small traveling glint only when the train moved during the prior 5 seconds.
+  Preserve the reduced-motion minute snapshots.
 - The production generator must exclude Staten Island park rings from the main
   four-borough projection. Staten Island land, streets, railway, and trains use
   the inset projection; sending its parks through `projectMain` creates detached
@@ -87,3 +88,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   land, streets, and parks rather than a blue-gray wash. Route lines use a
   restrained constant screen weight as the camera zooms so geography remains
   legible instead of scaling the transit strokes into dominant bands.
+- The production map supports inspection through 5× (500%) zoom. Keep the
+  appearance control as a bare, action-oriented sun or moon glyph with its full
+  44 px hit area, and preserve the personal intro line: “A city I love, moving
+  through the system that connects it.”
