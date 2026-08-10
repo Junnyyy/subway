@@ -71,13 +71,15 @@ const palette = {
 } as const;
 
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 3;
+const MAX_ZOOM = 5;
 const ZOOM_STEP = 1.35;
 const VIEW_SETTLE_DELAY = 90;
 const REBASE_ZOOM_IN_RATIO = 1.12;
 const REBASE_ZOOM_OUT_RATIO = 0.94;
 const REBASE_PAN_DISTANCE = 48;
-const TRAIN_WAKE_SECONDS = 30;
+const TRAIN_WAKE_SECONDS = 75;
+const TRAIN_MOTION_SAMPLE_SECONDS = 5;
+const TRAIN_GLINT_CYCLE_SECONDS = 1.8;
 
 type ViewState = {
   zoom: number;
@@ -358,13 +360,18 @@ function drawTrains(
         shape,
         (wakeStartSeconds + serviceSeconds) / 2,
       );
+      const recentPosition = sampleScheduledTrip(
+        trip,
+        shape,
+        Math.max(trip.startSeconds, serviceSeconds - TRAIN_MOTION_SAMPLE_SECONDS),
+      );
       if (wakeStart && wakeMiddle) {
         const wakeDistance =
           Math.hypot(position.x - wakeStart.x, position.y - wakeStart.y) *
           transform.scale;
         if (wakeDistance > 1.5) {
           context.save();
-          context.globalAlpha = 0.32;
+          context.globalAlpha = 0.36;
           context.strokeStyle = route.color;
           context.lineWidth = 5.2 / transform.scale;
           context.lineCap = "round";
@@ -378,6 +385,68 @@ function drawTrains(
           context.strokeStyle = route.textColor;
           context.lineWidth = 0.9 / transform.scale;
           context.stroke();
+
+          const recentDistance = recentPosition
+            ? Math.hypot(
+                position.x - recentPosition.x,
+                position.y - recentPosition.y,
+              ) * transform.scale
+            : 0;
+          if (recentDistance > 0.15) {
+            const firstLength = Math.hypot(
+              wakeMiddle.x - wakeStart.x,
+              wakeMiddle.y - wakeStart.y,
+            );
+            const secondLength = Math.hypot(
+              position.x - wakeMiddle.x,
+              position.y - wakeMiddle.y,
+            );
+            const totalLength = firstLength + secondLength;
+            const phaseOffset =
+              ((trip.startSeconds * 0.017 + trip.shapeIndex * 0.13) % 1 + 1) % 1;
+            const phase =
+              ((serviceSeconds / TRAIN_GLINT_CYCLE_SECONDS + phaseOffset) % 1 +
+                1) %
+              1;
+            const traveled = phase * totalLength;
+            const useFirstSegment = traveled <= firstLength;
+            const segmentLength = useFirstSegment ? firstLength : secondLength;
+            const segmentProgress =
+              segmentLength > 0
+                ? (useFirstSegment ? traveled : traveled - firstLength) /
+                  segmentLength
+                : 0;
+            const segmentStart = useFirstSegment ? wakeStart : wakeMiddle;
+            const segmentEnd = useFirstSegment ? wakeMiddle : position;
+            const glintX =
+              segmentStart.x + (segmentEnd.x - segmentStart.x) * segmentProgress;
+            const glintY =
+              segmentStart.y + (segmentEnd.y - segmentStart.y) * segmentProgress;
+            const glintAlpha = Math.sin(Math.PI * phase) ** 2;
+
+            context.globalAlpha = 0.22 * glintAlpha;
+            context.fillStyle = route.color;
+            context.beginPath();
+            context.arc(
+              glintX,
+              glintY,
+              3.2 / transform.scale,
+              0,
+              Math.PI * 2,
+            );
+            context.fill();
+            context.globalAlpha = 0.9 * glintAlpha;
+            context.fillStyle = route.textColor;
+            context.beginPath();
+            context.arc(
+              glintX,
+              glintY,
+              1.65 / transform.scale,
+              0,
+              Math.PI * 2,
+            );
+            context.fill();
+          }
           context.restore();
         }
       }
