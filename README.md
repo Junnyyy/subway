@@ -8,9 +8,9 @@ This is not a live train tracker and is not an official MTA map or application.
 
 ## What it includes
 
-- Original Canvas cartography with Manhattan detail, major outer-borough streets, parks, landmarks, and a Staten Island inset.
+- Original Canvas cartography centered on Manhattan, the Bronx, Brooklyn, and Queens, with major streets, parks, and landmarks.
 - Schedule-modeled train positions generated from MTA static GTFS stop times and shapes.
-- Sidebar route-family filters for isolating one colored service group at a time.
+- Desktop hover previews and click-to-pin route-family filters, with touch and keyboard selection preserved.
 - Light and dark appearances that default to the user’s device setting without a first-paint theme flash.
 - Pointer, keyboard, wheel, and trackpad navigation through 500% zoom.
 - Reduced-motion minute snapshots, responsive layouts, and high-density Canvas rendering.

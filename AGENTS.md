@@ -59,7 +59,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   always follows `America/New_York`; `prefers-reduced-motion` uses minute-based
   snapshots instead of continuous train motion, without adding playback UI.
 - Map inspection uses a single composite transform around both canvas layers:
-  1–3× button, wheel, keyboard, and pinch zoom plus pointer or arrow-key pan.
+  1–5× wheel, keyboard, and pinch zoom plus pointer or arrow-key pan.
   Keep gesture updates out of React state. The renderer applies an immediate
   composite transform during input, then predictively commits a scale-aware
   Canvas redraw after 12% zoom-in, 6% zoom-out, or 48 px of pan, with a 90 ms
@@ -86,10 +86,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   changes. Do not re-anchor it to the once-per-second React display clock; that
   tiny correction appears as train jitter at 5× zoom. Re-anchor only after a
   date/mode boundary or when a hidden tab becomes visible again.
-- The production generator must exclude Staten Island park rings from the main
-  four-borough projection. Staten Island land, streets, railway, and trains use
-  the inset projection; sending its parks through `projectMain` creates detached
-  green shapes over the inset. The inset has a surface but no container border.
+- Generated artifacts retain the hashed Staten Island geometry and SIR schedule
+  for source reproducibility, but the production experience excludes route
+  `SI`, its family, trains, tracks, land, and streets at the render boundary.
+  Keep the desktop camera centered on the four-borough frame instead of
+  reserving visual space for an inset.
 - Dark mode intentionally uses near-black water and chrome with subtly lighter
   land, streets, and parks rather than a blue-gray wash. Route lines use a
   restrained constant screen weight as the camera zooms so geography remains
@@ -114,17 +115,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   most temporary service changes and must be refreshed for later timetables.
   MTA data feeds are free to use; the A-train roundel is a licensed subway route
   indicator, so retain the licensing warning in `README.md` until resolved.
-- Production route-family rows are interactive toggle buttons. At most one
-  family is selected: its tracks and trains remain visible, activating it again
-  restores the full network, and the sidebar counts continue to describe the
-  full modeled schedule. Preserve the 40 px desktop and 44 px mobile targets,
-  `aria-pressed`, neutral focus ring, capability-gated hover, and reduced-motion
-  press behavior.
+- Production route-family rows are interactive toggle buttons for the nine core
+  color families. Fine-pointer hover temporarily previews a family; click,
+  keyboard, or touch pins it; activating the pinned family restores the full
+  network after hover leaves. Communicate focus only through the active route
+  color and monochrome, dimmed alternatives—never a row background. Preserve
+  the 40 px desktop and 44 px mobile targets, `aria-pressed`, neutral focus ring,
+  capability-gated hover, and reduced-motion press behavior.
 - The production canvas intentionally omits the former top-line captions,
-  visible zoom HUD, position-model statistic, and Staten Island inset chrome.
+  visible zoom HUD, position-model statistic, Staten Island, and SIR.
   Zoom and pan remain available through wheel, pinch, pointer, double-click,
-  and keyboard input; Staten Island renders as bare inset cartography and gets a
-  focused narrow-screen view when its family is selected.
+  and keyboard input.
 - Map correctness is bounded by its sources: boroughs, streets, and parks are
   simplified projections of the hashed NYC datasets, while route paths and
   scheduled motion come from hashed MTA GTFS shapes, trips, stops, and stop
