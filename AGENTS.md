@@ -7,3 +7,22 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Project learnings
+
+- The visualization exploration is isolated at
+  `app/prototypes/subway-network`. It contains three switchable directions
+  (Boroughs, Diagram, and Flow); do not import prototype components into the
+  production surface before a direction is selected.
+- Prototype train positions and route geometry are intentionally synthetic.
+  Route colors are derived from the official MTA Colors dataset. When a
+  direction is promoted, replace the representative paths with generated
+  geometry from the official static subway GTFS `shapes.txt` file before
+  adding GTFS-RT.
+- MTA data feeds are free to use, but MTA logos, maps, symbols, and related
+  intellectual property may require a license. Keep original cartography and
+  avoid copying official map assets without resolving that boundary.
+- In the restricted Codex environment, the default Turbopack production build
+  can fail while binding an internal compiler port. The documented Next.js
+  Webpack fallback distinguishes that environment failure from application
+  source errors: `npm run build -- --webpack`.
