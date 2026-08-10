@@ -114,3 +114,20 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   most temporary service changes and must be refreshed for later timetables.
   MTA data feeds are free to use; the A-train roundel is a licensed subway route
   indicator, so retain the licensing warning in `README.md` until resolved.
+- Production route-family rows are interactive toggle buttons. At most one
+  family is selected: its tracks and trains remain visible, activating it again
+  restores the full network, and the sidebar counts continue to describe the
+  full modeled schedule. Preserve the 40 px desktop and 44 px mobile targets,
+  `aria-pressed`, neutral focus ring, capability-gated hover, and reduced-motion
+  press behavior.
+- The production canvas intentionally omits the former top-line captions,
+  visible zoom HUD, position-model statistic, and Staten Island inset chrome.
+  Zoom and pan remain available through wheel, pinch, pointer, double-click,
+  and keyboard input; Staten Island renders as bare inset cartography and gets a
+  focused narrow-screen view when its family is selected.
+- Map correctness is bounded by its sources: boroughs, streets, and parks are
+  simplified projections of the hashed NYC datasets, while route paths and
+  scheduled motion come from hashed MTA GTFS shapes, trips, stops, and stop
+  times. Tests must keep every route in exactly one matching color family,
+  verify shape-distance parity and monotonicity, constrain all points to the
+  intended main or Staten Island frame, and preserve unique in-bounds labels.

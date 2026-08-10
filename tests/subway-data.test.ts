@@ -30,6 +30,30 @@ test("generated subway manifest references complete production artifacts", () =>
   }
 });
 
+test("every route belongs to exactly one matching color family", () => {
+  const manifest = readJson<SubwayManifest>(manifestPath);
+  const routeById = new Map(manifest.routes.map((route) => [route.id, route]));
+  const groupedRouteIds = manifest.routeFamilies.flatMap(
+    (family) => family.routeIds,
+  );
+
+  assert.equal(new Set(groupedRouteIds).size, groupedRouteIds.length);
+  assert.deepEqual(
+    [...groupedRouteIds].sort(),
+    manifest.routes.map((route) => route.id).sort(),
+  );
+
+  for (const family of manifest.routeFamilies) {
+    for (const routeId of family.routeIds) {
+      const route = routeById.get(routeId);
+      assert.ok(route, `missing route ${routeId}`);
+      assert.equal(route.color, family.color);
+      assert.equal(route.textColor, family.textColor);
+      assert.ok(family.labels.includes(route.label));
+    }
+  }
+});
+
 test("generated map preserves the selected sparse landmark composition", () => {
   const manifest = readJson<SubwayManifest>(manifestPath);
   const map = readJson<SubwayMapData>(resolve("public", manifest.mapFile.slice(1)));
@@ -57,6 +81,59 @@ test("generated map preserves the selected sparse landmark composition", () => {
       "World Trade Center",
     ],
   );
+});
+
+test("generated cartography and route shapes stay inside their intended frames", () => {
+  const manifest = readJson<SubwayManifest>(manifestPath);
+  const map = readJson<SubwayMapData>(resolve("public", manifest.mapFile.slice(1)));
+  const routeIds = new Set(manifest.routes.map((route) => route.id));
+  const landmarkIds = new Set<string>();
+  let statenIslandShapes = 0;
+  let mainMapShapes = 0;
+
+  assert.deepEqual(
+    map.boroughs.map((borough) => borough.name).sort(),
+    ["Bronx", "Brooklyn", "Manhattan", "Queens"],
+  );
+  assert.ok(map.boroughs.every((borough) => borough.path.length > 100));
+  assert.ok(map.statenIsland.path.length > 100);
+  assert.ok(map.parks.length > 100);
+  assert.ok(Object.values(map.streets).every((path) => path.length > 100));
+
+  for (const shape of map.shapes) {
+    assert.ok(routeIds.has(shape.routeId), `unknown route ${shape.routeId}`);
+    assert.ok(shape.points.length >= 4);
+    assert.equal(shape.points.length % 2, 0);
+    assert.equal(shape.distances.length, shape.points.length / 2);
+    assert.ok(shape.distances.at(-1)! > 0);
+
+    for (let index = 1; index < shape.distances.length; index += 1) {
+      assert.ok(shape.distances[index - 1] <= shape.distances[index]);
+    }
+
+    for (let index = 0; index < shape.points.length; index += 2) {
+      const x = shape.points[index];
+      const y = shape.points[index + 1];
+      assert.ok(x >= 0 && x <= map.viewBox[0], `${shape.id} x=${x}`);
+      assert.ok(y >= 0 && y <= map.viewBox[1], `${shape.id} y=${y}`);
+      if (shape.routeId === "SI") {
+        assert.ok(x < 280 && y > 600, `${shape.id} escaped Staten Island`);
+      }
+    }
+
+    if (shape.routeId === "SI") statenIslandShapes += 1;
+    else mainMapShapes += 1;
+  }
+
+  assert.ok(statenIslandShapes > 0);
+  assert.ok(mainMapShapes >= 200);
+
+  for (const landmark of map.landmarks) {
+    assert.equal(landmarkIds.has(landmark.id), false, landmark.id);
+    landmarkIds.add(landmark.id);
+    assert.ok(landmark.x >= 0 && landmark.x <= map.viewBox[0]);
+    assert.ok(landmark.y >= 0 && landmark.y <= map.viewBox[1]);
+  }
 });
 
 test("schedule chunks contain monotonic trip keyframes", () => {
