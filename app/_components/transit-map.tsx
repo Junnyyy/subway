@@ -74,6 +74,11 @@ const palette = {
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 1.35;
+const VIEW_SETTLE_DELAY = 90;
+const REBASE_ZOOM_IN_RATIO = 1.12;
+const REBASE_ZOOM_OUT_RATIO = 0.94;
+const REBASE_PAN_DISTANCE = 48;
+const TRAIN_WAKE_SECONDS = 30;
 
 type ViewState = {
   zoom: number;
@@ -84,6 +89,12 @@ type ViewState = {
 type Point = {
   x: number;
   y: number;
+};
+
+type SafariGestureEvent = Event & {
+  clientX?: number;
+  clientY?: number;
+  scale: number;
 };
 
 type Gesture =
@@ -338,6 +349,40 @@ function drawTrains(
       const position = sampleScheduledTrip(trip, shape, serviceSeconds);
       if (!position) continue;
 
+      const wakeStartSeconds = Math.max(
+        trip.startSeconds,
+        serviceSeconds - TRAIN_WAKE_SECONDS,
+      );
+      const wakeStart = sampleScheduledTrip(trip, shape, wakeStartSeconds);
+      const wakeMiddle = sampleScheduledTrip(
+        trip,
+        shape,
+        (wakeStartSeconds + serviceSeconds) / 2,
+      );
+      if (wakeStart && wakeMiddle) {
+        const wakeDistance =
+          Math.hypot(position.x - wakeStart.x, position.y - wakeStart.y) *
+          transform.scale;
+        if (wakeDistance > 1.5) {
+          context.save();
+          context.globalAlpha = 0.32;
+          context.strokeStyle = route.color;
+          context.lineWidth = 5.2 / transform.scale;
+          context.lineCap = "round";
+          context.lineJoin = "round";
+          context.beginPath();
+          context.moveTo(wakeStart.x, wakeStart.y);
+          context.lineTo(wakeMiddle.x, wakeMiddle.y);
+          context.lineTo(position.x, position.y);
+          context.stroke();
+          context.globalAlpha = 0.5;
+          context.strokeStyle = route.textColor;
+          context.lineWidth = 0.9 / transform.scale;
+          context.stroke();
+          context.restore();
+        }
+      }
+
       context.beginPath();
       context.arc(
         position.x,
@@ -414,6 +459,10 @@ export function TransitMap({
   const committedViewRef = useRef<ViewState>({ zoom: 1, panX: 0, panY: 0 });
   const pointersRef = useRef(new Map<number, Point>());
   const gestureRef = useRef<Gesture | null>(null);
+  const safariGestureRef = useRef<{
+    startZoom: number;
+    focalPoint: Point;
+  } | null>(null);
   const commitTimerRef = useRef<number | null>(null);
   const renderInputsRef = useRef({ scene, routes, dark, size, isPlaying });
   const reducedSnapshotMinute = isPlaying
@@ -483,27 +532,27 @@ export function TransitMap({
     }
   }, []);
 
-  const scheduleViewCommit = useCallback(() => {
+  const scheduleViewCommit = useCallback((delay = VIEW_SETTLE_DELAY) => {
     if (commitTimerRef.current) {
       window.clearTimeout(commitTimerRef.current);
     }
-    commitTimerRef.current = window.setTimeout(commitView, 120);
+    commitTimerRef.current = window.setTimeout(commitView, delay);
   }, [commitView]);
 
   const applyView = useCallback(
     (candidate: ViewState) => {
       const view = constrainView(candidate);
       viewRef.current = view;
+      const committed = committedViewRef.current;
+      const relativeZoom = view.zoom / committed.zoom;
+      const relativePanX = view.panX - relativeZoom * committed.panX;
+      const relativePanY = view.panY - relativeZoom * committed.panY;
+      const isCommitted =
+        Math.abs(relativeZoom - 1) < 0.0001 &&
+        Math.abs(relativePanX) < 0.01 &&
+        Math.abs(relativePanY) < 0.01;
       const layer = viewportLayerRef.current;
       if (layer) {
-        const committed = committedViewRef.current;
-        const relativeZoom = view.zoom / committed.zoom;
-        const relativePanX = view.panX - relativeZoom * committed.panX;
-        const relativePanY = view.panY - relativeZoom * committed.panY;
-        const isCommitted =
-          Math.abs(relativeZoom - 1) < 0.0001 &&
-          Math.abs(relativePanX) < 0.01 &&
-          Math.abs(relativePanY) < 0.01;
         layer.style.transform =
           isCommitted
             ? "none"
@@ -519,33 +568,45 @@ export function TransitMap({
       if (containerRef.current) {
         containerRef.current.dataset.zoomed = String(view.zoom > MIN_ZOOM);
       }
-      scheduleViewCommit();
+      if (!isCommitted) {
+        const shouldRebase =
+          relativeZoom >= REBASE_ZOOM_IN_RATIO ||
+          relativeZoom <= REBASE_ZOOM_OUT_RATIO ||
+          Math.abs(relativePanX) >= REBASE_PAN_DISTANCE ||
+          Math.abs(relativePanY) >= REBASE_PAN_DISTANCE ||
+          view.zoom === MIN_ZOOM ||
+          view.zoom === MAX_ZOOM;
+        scheduleViewCommit(shouldRebase ? 0 : VIEW_SETTLE_DELAY);
+      }
     },
     [constrainView, scheduleViewCommit],
   );
 
-  const pointFromClient = (clientX: number, clientY: number): Point => {
+  const pointFromClient = useCallback((clientX: number, clientY: number): Point => {
     const bounds = containerRef.current?.getBoundingClientRect();
     if (!bounds) return { x: 0, y: 0 };
     return {
       x: clientX - bounds.left - bounds.width / 2,
       y: clientY - bounds.top - bounds.height / 2,
     };
-  };
+  }, []);
 
-  const zoomAround = (nextZoom: number, focalPoint: Point = { x: 0, y: 0 }) => {
-    const current = viewRef.current;
-    const zoom = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
-    const worldPoint = {
-      x: (focalPoint.x - current.panX) / current.zoom,
-      y: (focalPoint.y - current.panY) / current.zoom,
-    };
-    applyView({
-      zoom,
-      panX: focalPoint.x - worldPoint.x * zoom,
-      panY: focalPoint.y - worldPoint.y * zoom,
-    });
-  };
+  const zoomAround = useCallback(
+    (nextZoom: number, focalPoint: Point = { x: 0, y: 0 }) => {
+      const current = viewRef.current;
+      const zoom = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
+      const worldPoint = {
+        x: (focalPoint.x - current.panX) / current.zoom,
+        y: (focalPoint.y - current.panY) / current.zoom,
+      };
+      applyView({
+        zoom,
+        panX: focalPoint.x - worldPoint.x * zoom,
+        panY: focalPoint.y - worldPoint.y * zoom,
+      });
+    },
+    [applyView],
+  );
 
   const panBy = (x: number, y: number) => {
     const current = viewRef.current;
@@ -665,9 +726,18 @@ export function TransitMap({
 
   const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
     event.preventDefault();
+    if (safariGestureRef.current) return;
+    const deltaMultiplier =
+      event.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? size.height
+          : 1;
+    const zoomIntensity = event.ctrlKey ? 0.008 : 0.0015;
     const focalPoint = pointFromClient(event.clientX, event.clientY);
     zoomAround(
-      viewRef.current.zoom * Math.exp(-event.deltaY * 0.0015),
+      viewRef.current.zoom *
+        Math.exp(-event.deltaY * deltaMultiplier * zoomIntensity),
       focalPoint,
     );
   };
@@ -693,6 +763,57 @@ export function TransitMap({
     }
     event.preventDefault();
   };
+
+  useEffect(() => {
+    const element = viewportLayerRef.current;
+    if (!element || navigator.maxTouchPoints > 0) return;
+
+    const focalPointFor = (event: SafariGestureEvent) =>
+      typeof event.clientX === "number" && typeof event.clientY === "number"
+        ? pointFromClient(event.clientX, event.clientY)
+        : { x: 0, y: 0 };
+    const handleGestureStart = (rawEvent: Event) => {
+      const event = rawEvent as SafariGestureEvent;
+      event.preventDefault();
+      safariGestureRef.current = {
+        startZoom: viewRef.current.zoom,
+        focalPoint: focalPointFor(event),
+      };
+      if (containerRef.current) {
+        containerRef.current.dataset.dragging = "true";
+      }
+    };
+    const handleGestureChange = (rawEvent: Event) => {
+      const event = rawEvent as SafariGestureEvent;
+      const gesture = safariGestureRef.current;
+      if (!gesture || !Number.isFinite(event.scale)) return;
+      event.preventDefault();
+      zoomAround(gesture.startZoom * event.scale, gesture.focalPoint);
+    };
+    const handleGestureEnd = (event: Event) => {
+      event.preventDefault();
+      safariGestureRef.current = null;
+      if (containerRef.current) {
+        containerRef.current.dataset.dragging = "false";
+      }
+      commitView();
+    };
+
+    element.addEventListener("gesturestart", handleGestureStart, {
+      passive: false,
+    });
+    element.addEventListener("gesturechange", handleGestureChange, {
+      passive: false,
+    });
+    element.addEventListener("gestureend", handleGestureEnd, {
+      passive: false,
+    });
+    return () => {
+      element.removeEventListener("gesturestart", handleGestureStart);
+      element.removeEventListener("gesturechange", handleGestureChange);
+      element.removeEventListener("gestureend", handleGestureEnd);
+    };
+  }, [commitView, pointFromClient, zoomAround]);
 
   useEffect(() => {
     clockRef.current = {
@@ -804,7 +925,7 @@ export function TransitMap({
         ref={viewportLayerRef}
         role="region"
         tabIndex={0}
-        aria-label="Interactive subway map. Use the zoom controls, plus and minus keys, arrow keys to move, or zero to reset."
+        aria-label="Interactive subway map. Pinch or scroll to zoom, use arrow keys to move, or press zero to reset."
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={finishPointer}
@@ -832,7 +953,7 @@ export function TransitMap({
       </div>
       <div className={styles.zoomHud}>
         <span className={styles.zoomHint} aria-hidden="true">
-          Scroll to zoom · drag to move
+          Pinch or scroll to zoom · drag to move
         </span>
         <div className={styles.zoomControls} role="group" aria-label="Map zoom">
           <button

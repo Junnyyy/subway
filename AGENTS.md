@@ -61,10 +61,21 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Map inspection uses a single composite transform around both canvas layers:
   1–3× button, wheel, keyboard, and pinch zoom plus pointer or arrow-key pan.
   Keep gesture updates out of React state. The renderer applies an immediate
-  composite transform during input, then commits a scale-aware Canvas redraw
-  after 120 ms so labels and streets become sharp without repainting every
-  gesture frame. Use `overflow: clip` around this layer; scroll-container
-  clipping can retain an unwanted horizontal offset after zoom-button focus.
+  composite transform during input, then predictively commits a scale-aware
+  Canvas redraw after 12% zoom-in, 6% zoom-out, or 48 px of pan, with a 90 ms
+  settle fallback. This keeps labels and streets sharp near the viewport edges
+  without repainting every gesture frame. Use `overflow: clip` and an isolated
+  map stacking context; scroll-container clipping can retain an unwanted
+  horizontal offset after zoom-button focus.
+- Desktop trackpad pinch needs both browser paths: Chromium and Firefox expose
+  pinch as a `wheel` event with `ctrlKey`, while desktop Safari also emits
+  `gesturestart`, `gesturechange`, and `gestureend`. Register the Safari events
+  natively with `passive: false`, clean them up, and retain pointer-based pinch
+  for touch devices.
+- Train motion wakes visualize the actual prior 30 seconds of each scheduled
+  trip rather than increasing simulated speed. Keep them route-colored with a
+  thin contrasting core, omit wakes shorter than 1.5 screen px, and preserve
+  the reduced-motion minute snapshots.
 - The production generator must exclude Staten Island park rings from the main
   four-borough projection. Staten Island land, streets, railway, and trains use
   the inset projection; sending its parks through `projectMain` creates detached
