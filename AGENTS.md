@@ -98,8 +98,19 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   appearance control as a bare, action-oriented sun or moon glyph with its full
   44 px hit area, and preserve the personal intro line: “A city I love, moving
   through the system that connects it.”
-- Production share identity uses the blue A-train roundel: `app/icon.tsx`
-  replaces the default favicon, while `app/opengraph-image.tsx` and
-  `app/twitter-image.tsx` render the flat 1200×630 social card. Keep the social
-  image deterministic and gradient-free. Metadata URL resolution prefers
-  `NEXT_PUBLIC_SITE_URL`, then Vercel production/preview hosts, then localhost.
+- Production share identity uses the blue A-train roundel: the hand-authored
+  `app/icon.svg` replaces the default favicon, while `app/opengraph-image.tsx`
+  and `app/twitter-image.tsx` render the flat 1200×630 social card.
+  `public/brand/subway-in-motion.svg` mirrors that composition for repository
+  documentation. Keep all three deterministic and gradient-free. Metadata URL
+  resolution prefers `NEXT_PUBLIC_SITE_URL`, then Vercel production/preview
+  hosts, then localhost.
+- The initial `system` appearance must be represented as `data-theme="system"`
+  in server-rendered markup. CSS resolves those tokens through
+  `prefers-color-scheme` before hydration; JavaScript still resolves the same
+  media query for Canvas colors and the appearance control.
+- The bundled MTA static GTFS currently covers 2026-05-26 through 2026-10-31.
+  It is sufficient for an immediate 2026-08-10 release, but regular GTFS omits
+  most temporary service changes and must be refreshed for later timetables.
+  MTA data feeds are free to use; the A-train roundel is a licensed subway route
+  indicator, so retain the licensing warning in `README.md` until resolved.
