@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">Subway in Motion</title>
+  <desc id="description">The words Subway in motion above a blue subway line ending in an A train marker.</desc>
+  <rect width="1200" height="630" fill="#060709" />
+  <g fill="#f1f3f4" font-family="Arial, Helvetica, sans-serif" font-size="116" font-weight="500" letter-spacing="-6">
+    <text x="76" y="302">Subway</text>
+    <text x="76" y="404">in motion</text>
+  </g>
+  <rect x="0" y="492" width="914" height="14" fill="#0039a6" />
+  <circle cx="977" cy="499" r="63" fill="#0039a6" />
+  <path
+    fill="#fff"
+    fill-rule="evenodd"
+    d="M977 457.5 1001.2 514h-11.3l-5.1-12.7h-15.6l-5.1 12.7h-11.3l24.2-56.5Zm0 21.1-4.5 12h9l-4.5-12Z"
+  />
+</svg>
