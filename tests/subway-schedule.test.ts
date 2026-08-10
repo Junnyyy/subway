@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   activeServiceIds,
+  getNewYorkClock,
   parseGtfsTime,
   positionAtDistance,
   sampleScheduledTrip,
@@ -18,6 +19,17 @@ test("parses GTFS service times beyond midnight", () => {
 test("shifts compact service dates without local timezone drift", () => {
   assert.equal(shiftServiceDate("20260810", -1), "20260809");
   assert.equal(shiftServiceDate("20260301", -1), "20260228");
+});
+
+test("reads the wall clock in New York across daylight-saving seasons", () => {
+  assert.deepEqual(getNewYorkClock(new Date("2026-08-10T06:30:45Z")), {
+    serviceDate: "20260810",
+    seconds: 9_045,
+  });
+  assert.deepEqual(getNewYorkClock(new Date("2026-01-10T06:30:45Z")), {
+    serviceDate: "20260110",
+    seconds: 5_445,
+  });
 });
 
 test("applies service calendar additions and removals", () => {

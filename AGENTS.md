@@ -25,7 +25,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - In the restricted Codex environment, the default Turbopack production build
   can fail while binding an internal compiler port. The documented Next.js
   Webpack fallback distinguishes that environment failure from application
-  source errors: `npm run build -- --webpack`.
+  source errors: `pnpm build --webpack`.
 - The second subway-network prototype round replaces Boroughs, Diagram, and
   Flow with Street Atlas, Transit Overlay, and Quiet Grid. All three share the
   same geographic substrate so reviews compare visual density and information

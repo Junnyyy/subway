@@ -147,8 +147,9 @@ function drawStaticMap(
 
   if (!mobile) {
     context.fillStyle = colors.inset;
-    const inset = new Path2D();
-    inset.roundRect(20, 606, 252, 184, 12);
+    const inset = new Path2D(
+      "M32 606H260A12 12 0 0 1 272 618V778A12 12 0 0 1 260 790H32A12 12 0 0 1 20 778V618A12 12 0 0 1 32 606Z",
+    );
     context.fill(inset);
     context.stroke(inset);
     const statenIsland = new Path2D(map.statenIsland.path);
