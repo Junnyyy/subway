@@ -71,7 +71,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   pinch as a `wheel` event with `ctrlKey`, while desktop Safari also emits
   `gesturestart`, `gesturechange`, and `gestureend`. Register the Safari events
   natively with `passive: false`, clean them up, and retain pointer-based pinch
-  for touch devices.
+  for touch devices. Register `wheel` directly on the map surface with
+  `passive: false` as well; relying on React's delegated wheel event can let the
+  same gesture scroll the document. Prevent propagation only inside the map so
+  scrolling over the sidebar and other page surfaces remains native.
 - Train motion wakes visualize the actual prior 30 seconds of each scheduled
   trip rather than increasing simulated speed. Keep them route-colored with a
   thin contrasting core, omit wakes shorter than 1.5 screen px, and preserve
