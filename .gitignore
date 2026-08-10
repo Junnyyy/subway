@@ -19,6 +19,7 @@
 
 # production
 /build
+/data/subway/sources/
 
 # misc
 .DS_Store

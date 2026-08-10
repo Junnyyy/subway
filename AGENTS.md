@@ -45,3 +45,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   expand it into an all-stations map. The landmark set intentionally includes
   the user-specific anchors Columbia University, W 4 St–NYU, and World Trade
   Center alongside the broader city landmarks.
+- The production data pipeline lives under `scripts/subway` and writes a small
+  manifest plus content-hashed map and per-service schedule chunks to
+  `public/data/subway`. MTA stop times do not provide shape distances, so the
+  generator projects every trip stop monotonically onto its GTFS shape and
+  preserves service times beyond `24:00:00`; do not repeat this work in the
+  browser or bundle the raw GTFS tables into React.

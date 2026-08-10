@@ -1,0 +1,84 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  activeServiceIds,
+  parseGtfsTime,
+  positionAtDistance,
+  sampleScheduledTrip,
+  shiftServiceDate,
+} from "../lib/subway/schedule.ts";
+import type { ScheduledTrip, ShapeDefinition } from "../lib/subway/types.ts";
+
+test("parses GTFS service times beyond midnight", () => {
+  assert.equal(parseGtfsTime("00:06:30"), 390);
+  assert.equal(parseGtfsTime("25:10:05"), 90_605);
+  assert.throws(() => parseGtfsTime("12:70:00"), /Invalid GTFS time/);
+});
+
+test("shifts compact service dates without local timezone drift", () => {
+  assert.equal(shiftServiceDate("20260810", -1), "20260809");
+  assert.equal(shiftServiceDate("20260301", -1), "20260228");
+});
+
+test("applies service calendar additions and removals", () => {
+  const calendars = [
+    {
+      id: "Weekday",
+      weekdays: [1, 2, 3, 4, 5],
+      startDate: "20260101",
+      endDate: "20261231",
+    },
+  ];
+  const exceptions = [
+    { serviceId: "Weekday", date: "20260703", added: false },
+    { serviceId: "Saturday", date: "20260703", added: true },
+  ];
+  assert.deepEqual(activeServiceIds(calendars, exceptions, "20260702"), [
+    "Weekday",
+  ]);
+  assert.deepEqual(activeServiceIds(calendars, exceptions, "20260703"), [
+    "Saturday",
+  ]);
+});
+
+const shape: ShapeDefinition = {
+  id: "shape",
+  routeId: "A",
+  points: [0, 0, 10, 0, 20, 0],
+  distances: [0, 10, 20],
+};
+
+const trip: ScheduledTrip = {
+  id: "trip",
+  routeId: "A",
+  shapeIndex: 0,
+  direction: 0,
+  startSeconds: 100,
+  endSeconds: 220,
+  keyframes: [
+    [100, 110, 0],
+    [160, 170, 10],
+    [220, 220, 20],
+  ],
+};
+
+test("holds a scheduled train during dwell time", () => {
+  assert.deepEqual(sampleScheduledTrip(trip, shape, 105), {
+    x: 0,
+    y: 0,
+    distance: 0,
+    progress: 0,
+  });
+  assert.equal(sampleScheduledTrip(trip, shape, 165)?.distance, 10);
+});
+
+test("interpolates between scheduled stops and clamps shape distances", () => {
+  assert.equal(sampleScheduledTrip(trip, shape, 135)?.distance, 5);
+  assert.deepEqual(positionAtDistance(shape, 100), {
+    x: 20,
+    y: 0,
+    distance: 20,
+    progress: 1,
+  });
+  assert.equal(sampleScheduledTrip(trip, shape, 99), null);
+});
