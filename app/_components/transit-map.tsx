@@ -4,7 +4,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type RefObject,
-  type WheelEvent as ReactWheelEvent,
   useCallback,
   useEffect,
   useRef,
@@ -724,23 +723,27 @@ export function TransitMap({
     if (containerRef.current) containerRef.current.dataset.dragging = "false";
   };
 
-  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (safariGestureRef.current) return;
-    const deltaMultiplier =
-      event.deltaMode === WheelEvent.DOM_DELTA_LINE
-        ? 16
-        : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-          ? size.height
-          : 1;
-    const zoomIntensity = event.ctrlKey ? 0.008 : 0.0015;
-    const focalPoint = pointFromClient(event.clientX, event.clientY);
-    zoomAround(
-      viewRef.current.zoom *
-        Math.exp(-event.deltaY * deltaMultiplier * zoomIntensity),
-      focalPoint,
-    );
-  };
+  const handleWheel = useCallback(
+    (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (safariGestureRef.current) return;
+      const deltaMultiplier =
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? size.height
+            : 1;
+      const zoomIntensity = event.ctrlKey ? 0.008 : 0.0015;
+      const focalPoint = pointFromClient(event.clientX, event.clientY);
+      zoomAround(
+        viewRef.current.zoom *
+          Math.exp(-event.deltaY * deltaMultiplier * zoomIntensity),
+        focalPoint,
+      );
+    },
+    [pointFromClient, size.height, zoomAround],
+  );
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const key = event.key;
@@ -763,6 +766,14 @@ export function TransitMap({
     }
     event.preventDefault();
   };
+
+  useEffect(() => {
+    const element = viewportLayerRef.current;
+    if (!element) return;
+
+    element.addEventListener("wheel", handleWheel, { passive: false });
+    return () => element.removeEventListener("wheel", handleWheel);
+  }, [handleWheel]);
 
   useEffect(() => {
     const element = viewportLayerRef.current;
@@ -930,7 +941,6 @@ export function TransitMap({
         onPointerMove={handlePointerMove}
         onPointerUp={finishPointer}
         onPointerCancel={finishPointer}
-        onWheel={handleWheel}
         onKeyDown={handleKeyDown}
         onDoubleClick={(event) =>
           zoomAround(

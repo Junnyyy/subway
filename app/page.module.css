@@ -261,13 +261,14 @@
   position: absolute;
   inset: 0;
   overflow: clip;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
 }
 
 .mapViewportLayer {
   position: absolute;
   inset: 0;
   outline: none;
+  overscroll-behavior: none;
   touch-action: none;
   transform-origin: center;
   user-select: none;
