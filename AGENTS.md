@@ -40,3 +40,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   stop names because major complexes often repeat the same name across several
   route records. Keep the hand-tuned label offsets and anchors in the generator
   when adding hubs so the Transit Overlay remains sparse and collision-free.
+- Transit Overlay is the selected implementation direction. Preserve its left
+  service rail, restrained station set, and transit-first hierarchy; do not
+  expand it into an all-stations map. The landmark set intentionally includes
+  the user-specific anchors Columbia University, W 4 St–NYU, and World Trade
+  Center alongside the broader city landmarks.
