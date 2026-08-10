@@ -125,6 +125,9 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
   const [scene, setScene] = useState<LoadedScene | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [stats, setStats] = useState<SceneStats>({ total: 0, byRoute: {} });
+  const [selectedFamilyColor, setSelectedFamilyColor] = useState<string | null>(
+    null,
+  );
   const prefersReducedMotion = useSyncExternalStore(
     subscribeToReducedMotion,
     getReducedMotionSnapshot,
@@ -138,6 +141,17 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
   const isDark = theme === "dark" || (theme === "system" && systemIsDark);
   const themeAttribute = theme === "system" ? "system" : theme;
   const isPlaying = !prefersReducedMotion;
+  const selectedFamily = useMemo(
+    () =>
+      manifest.routeFamilies.find(
+        (family) => family.color === selectedFamilyColor,
+      ) ?? null,
+    [manifest.routeFamilies, selectedFamilyColor],
+  );
+  const selectedRouteIds = useMemo(
+    () => (selectedFamily ? new Set(selectedFamily.routeIds) : null),
+    [selectedFamily],
+  );
   const modelClock = useMemo(
     () =>
       now
@@ -255,14 +269,29 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
           </small>
         </div>
 
-        <div className={styles.legend} aria-label="Subway route color legend">
+        <div
+          className={styles.legend}
+          data-filtered={Boolean(selectedFamily)}
+          role="group"
+          aria-label="Filter subway routes"
+        >
           {manifest.routeFamilies.map((family) => {
             const count = family.routeIds.reduce(
               (total, routeId) => total + (stats.byRoute[routeId] ?? 0),
               0,
             );
+            const isSelected = family.color === selectedFamilyColor;
             return (
-              <div className={styles.legendRow} key={family.color}>
+              <button
+                className={styles.legendRow}
+                key={family.color}
+                type="button"
+                aria-label={`${family.labels.join(", ")} routes`}
+                aria-pressed={isSelected}
+                onClick={() =>
+                  setSelectedFamilyColor(isSelected ? null : family.color)
+                }
+              >
                 <span
                   className={styles.legendMark}
                   style={{ backgroundColor: family.color }}
@@ -270,7 +299,7 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
                 />
                 <span>{family.labels.join(" ")}</span>
                 <small>{count}</small>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -310,6 +339,7 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
         <TransitMap
           scene={scene}
           routes={manifest.routes}
+          selectedRouteIds={selectedRouteIds}
           dark={isDark}
           isPlaying={isPlaying}
           modelClock={modelClock}
@@ -317,7 +347,9 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
         />
         {!scene ? (
           <div className={styles.loading} role={loadError ? "alert" : "status"}>
-            {loadError ? "Unable to prepare the schedule" : "Preparing today&apos;s schedule"}
+            {loadError
+              ? "Unable to prepare the schedule"
+              : "Preparing today’s schedule"}
           </div>
         ) : null}
         <p className={styles.srOnly} aria-live="polite">

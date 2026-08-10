@@ -132,19 +132,53 @@
 
 .legend {
   display: grid;
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 6px;
   margin-top: 22px;
 }
 
 .legendRow {
+  appearance: none;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
-  min-height: 17px;
+  gap: 6px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
   font-size: 11px;
   font-weight: 610;
   font-variant-numeric: tabular-nums;
+  text-align: left;
+  touch-action: manipulation;
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out,
+    opacity 150ms ease-out,
+    transform 150ms ease-out;
+}
+
+.legendRow:active {
+  transform: scale(0.96);
+}
+
+.legendRow:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.legendRow[aria-pressed="true"] {
+  background: var(--hairline);
+}
+
+.legend[data-filtered="true"] .legendRow[aria-pressed="false"] {
+  color: var(--muted);
+  opacity: 0.55;
 }
 
 .legendRow small {
@@ -153,7 +187,7 @@
 }
 
 .legendMark {
-  width: 18px;
+  width: 14px;
   height: 4px;
   border-radius: 999px;
 }
@@ -317,6 +351,10 @@
     color: var(--ink);
   }
 
+  .legendRow:hover {
+    background: var(--control-hover);
+  }
+
 }
 
 @media (max-height: 760px) and (min-width: 701px) {
@@ -330,7 +368,7 @@
   }
 
   .legend {
-    gap: 5px;
+    gap: 2px 5px;
     margin-top: 16px;
   }
 
@@ -387,13 +425,15 @@
 
   .legend {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px 12px;
+    gap: 4px;
     margin-top: 16px;
   }
 
   .legendRow {
     grid-template-columns: 14px minmax(0, 1fr);
     gap: 6px;
+    min-height: 44px;
+    padding-inline: 6px;
     font-size: 9px;
   }
 
@@ -428,11 +468,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .iconButton {
+  .iconButton,
+  .legendRow {
     transition: background-color 150ms ease-out;
   }
 
-  .iconButton:active {
+  .iconButton:active,
+  .legendRow:active {
     transform: none;
   }
 }
