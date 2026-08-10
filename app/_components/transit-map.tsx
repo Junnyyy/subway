@@ -79,9 +79,8 @@ const VIEW_SETTLE_DELAY = 90;
 const REBASE_ZOOM_IN_RATIO = 1.12;
 const REBASE_ZOOM_OUT_RATIO = 0.94;
 const REBASE_PAN_DISTANCE = 48;
-const TRAIN_WAKE_SECONDS = 75;
+const TRAIN_DIRECTION_STEM_LENGTH = 15;
 const TRAIN_MOTION_SAMPLE_SECONDS = 5;
-const TRAIN_GLINT_CYCLE_SECONDS = 1.8;
 
 type ViewState = {
   zoom: number;
@@ -135,35 +134,6 @@ function pointMidpoint(first: Point, second: Point) {
     x: (first.x + second.x) / 2,
     y: (first.y + second.y) / 2,
   };
-}
-
-function polylineLength(points: readonly Point[]) {
-  let length = 0;
-  for (let index = 1; index < points.length; index += 1) {
-    length += pointDistance(points[index - 1], points[index]);
-  }
-  return length;
-}
-
-function pointAlongPolyline(points: readonly Point[], distance: number) {
-  if (!points.length) return null;
-  let remaining = Math.max(0, distance);
-
-  for (let index = 1; index < points.length; index += 1) {
-    const start = points[index - 1];
-    const end = points[index];
-    const segmentLength = pointDistance(start, end);
-    if (remaining <= segmentLength) {
-      const progress = segmentLength > 0 ? remaining / segmentLength : 0;
-      return {
-        x: start.x + (end.x - start.x) * progress,
-        y: start.y + (end.y - start.y) * progress,
-      };
-    }
-    remaining -= segmentLength;
-  }
-
-  return points.at(-1) ?? null;
 }
 
 function clockSecondsAt(
@@ -380,83 +350,43 @@ function drawTrains(
       byRoute[route.id] = (byRoute[route.id] ?? 0) + 1;
       if (visibleRouteIds && !visibleRouteIds.has(route.id)) continue;
 
-      const wakeStartSeconds = Math.max(
-        trip.startSeconds,
-        serviceSeconds - TRAIN_WAKE_SECONDS,
-      );
-      const wakeStart = sampleScheduledTrip(trip, shape, wakeStartSeconds);
       const recentPosition = sampleScheduledTrip(
         trip,
         shape,
         Math.max(trip.startSeconds, serviceSeconds - TRAIN_MOTION_SAMPLE_SECONDS),
       );
-      if (wakeStart) {
-        const wakePoints = shapePointsBetweenDistances(
+      const recentDistance = recentPosition
+        ? Math.hypot(
+            position.x - recentPosition.x,
+            position.y - recentPosition.y,
+          ) * transform.scale
+        : 0;
+      if (recentDistance > 0.15) {
+        const stemPoints = shapePointsBetweenDistances(
           shape,
-          wakeStart.distance,
+          Math.max(
+            0,
+            position.distance - TRAIN_DIRECTION_STEM_LENGTH / transform.scale,
+          ),
           position.distance,
         );
-        const wakeLength = polylineLength(wakePoints);
-        const wakeDistance = wakeLength * transform.scale;
-        if (wakeDistance > 1.5) {
+        if (stemPoints.length > 1) {
           context.save();
-          context.globalAlpha = 0.36;
+          context.globalAlpha = 0.58;
           context.strokeStyle = route.color;
           context.lineWidth = 5.2 / transform.scale;
           context.lineCap = "round";
           context.lineJoin = "round";
           context.beginPath();
-          context.moveTo(wakePoints[0].x, wakePoints[0].y);
-          for (const point of wakePoints.slice(1)) {
-            context.lineTo(point.x, point.y);
+          context.moveTo(stemPoints[0].x, stemPoints[0].y);
+          for (let index = 1; index < stemPoints.length; index += 1) {
+            context.lineTo(stemPoints[index].x, stemPoints[index].y);
           }
           context.stroke();
-          context.globalAlpha = 0.5;
+          context.globalAlpha = 0.72;
           context.strokeStyle = route.textColor;
           context.lineWidth = 0.9 / transform.scale;
           context.stroke();
-
-          const recentDistance = recentPosition
-            ? Math.hypot(
-                position.x - recentPosition.x,
-                position.y - recentPosition.y,
-              ) * transform.scale
-            : 0;
-          if (recentDistance > 0.15) {
-            const phaseOffset =
-              ((trip.startSeconds * 0.017 + trip.shapeIndex * 0.13) % 1 + 1) % 1;
-            const phase =
-              ((serviceSeconds / TRAIN_GLINT_CYCLE_SECONDS + phaseOffset) % 1 +
-                1) %
-              1;
-            const glint = pointAlongPolyline(wakePoints, phase * wakeLength);
-            const glintAlpha = Math.sin(Math.PI * phase) ** 2;
-
-            if (glint) {
-              context.globalAlpha = 0.22 * glintAlpha;
-              context.fillStyle = route.color;
-              context.beginPath();
-              context.arc(
-                glint.x,
-                glint.y,
-                3.2 / transform.scale,
-                0,
-                Math.PI * 2,
-              );
-              context.fill();
-              context.globalAlpha = 0.9 * glintAlpha;
-              context.fillStyle = route.textColor;
-              context.beginPath();
-              context.arc(
-                glint.x,
-                glint.y,
-                1.65 / transform.scale,
-                0,
-                Math.PI * 2,
-              );
-              context.fill();
-            }
-          }
           context.restore();
         }
       }

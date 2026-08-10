@@ -85,7 +85,7 @@ test("holds a scheduled train during dwell time", () => {
   assert.equal(sampleScheduledTrip(trip, shape, 165)?.distance, 10);
 });
 
-test("traces a scheduled wake through the actual shape geometry", () => {
+test("traces a local direction segment through the actual shape geometry", () => {
   const curvedShape: ShapeDefinition = {
     id: "curve",
     routeId: "A",
