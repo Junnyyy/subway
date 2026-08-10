@@ -187,13 +187,13 @@
   height: 44px;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--hairline);
+  border: 0;
   border-radius: 50%;
-  background: var(--control);
-  color: var(--ink);
+  background: transparent;
+  color: var(--muted);
   cursor: pointer;
   touch-action: manipulation;
-  transition: background-color 150ms ease-out, transform 150ms ease-out;
+  transition: color 150ms ease-out, transform 150ms ease-out;
 }
 
 .iconButton svg {
@@ -405,7 +405,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .iconButton:hover {
-    background: var(--control-hover);
+    color: var(--ink);
   }
 
   .zoomButton:hover:not(:disabled),

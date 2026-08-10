@@ -105,15 +105,15 @@ function resolveModelClock(now: number, manifest: SubwayManifest): ModelClock {
 function ThemeIcon({ dark }: { dark: boolean }) {
   if (dark) {
     return (
-      <svg aria-hidden="true" viewBox="0 0 20 20">
-        <path d="M15.3 12.8A6 6 0 0 1 7.2 4.7 6 6 0 1 0 15.3 12.8Z" />
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" />
       </svg>
     );
   }
   return (
-    <svg aria-hidden="true" viewBox="0 0 20 20">
-      <circle cx="10" cy="10" r="3" />
-      <path d="M10 2.2v1.6M10 16.2v1.6M2.2 10h1.6M16.2 10h1.6M4.5 4.5l1.1 1.1M14.4 14.4l1.1 1.1M15.5 4.5l-1.1 1.1M5.6 14.4l-1.1 1.1" />
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
     </svg>
   );
 }
@@ -234,7 +234,7 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
         <div className={styles.intro}>
           <p className={styles.eyebrow}>New York City</p>
           <h1>Subway in motion</h1>
-          <p>The network as it is scheduled to move through New York right now.</p>
+          <p>A city I love, moving through the system that connects it.</p>
         </div>
 
         <div className={styles.timeBlock}>
