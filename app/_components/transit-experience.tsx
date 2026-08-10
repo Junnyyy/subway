@@ -136,6 +136,7 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
     getServerSnapshot,
   );
   const isDark = theme === "dark" || (theme === "system" && systemIsDark);
+  const themeAttribute = theme === "system" ? "system" : theme;
   const isPlaying = !prefersReducedMotion;
   const modelClock = useMemo(
     () =>
@@ -230,7 +231,7 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
   }, []);
 
   return (
-    <main className={styles.experience} data-theme={isDark ? "dark" : "light"}>
+    <main className={styles.experience} data-theme={themeAttribute}>
       <aside className={styles.rail}>
         <div className={styles.intro}>
           <p className={styles.eyebrow}>New York City</p>

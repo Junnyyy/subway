@@ -13,6 +13,7 @@
   overflow: clip;
   background: var(--water);
   color: var(--ink);
+  color-scheme: light;
   isolation: isolate;
 }
 
@@ -25,6 +26,21 @@
   --panel: rgb(8 9 11 / 97%);
   --control: rgb(15 17 20 / 98%);
   --control-hover: #171b1f;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .experience[data-theme="system"] {
+    --water: #060709;
+    --ink: #f1f3f4;
+    --muted: #9ca4aa;
+    --faint: #545d64;
+    --hairline: rgb(241 243 244 / 10%);
+    --panel: rgb(8 9 11 / 97%);
+    --control: rgb(15 17 20 / 98%);
+    --control-hover: #171b1f;
+    color-scheme: dark;
+  }
 }
 
 .rail {

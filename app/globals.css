@@ -5,6 +5,13 @@
   --foreground: #25303a;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #060709;
+    --foreground: #f1f3f4;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
