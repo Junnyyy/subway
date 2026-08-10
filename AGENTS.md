@@ -79,7 +79,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   trip rather than increasing simulated speed. Keep them route-colored with a
   thin contrasting core, omit wakes shorter than 1.5 screen px, and use the
   small traveling glint only when the train moved during the prior 5 seconds.
+  Trace wakes and glints through the GTFS shape vertices between their sampled
+  distances; straight chords visibly leave curved route lines at high zoom.
   Preserve the reduced-motion minute snapshots.
+- The Canvas animation clock is monotonic between schedule-date or replay-mode
+  changes. Do not re-anchor it to the once-per-second React display clock; that
+  tiny correction appears as train jitter at 5× zoom. Re-anchor only after a
+  date/mode boundary or when a hidden tab becomes visible again.
 - The production generator must exclude Staten Island park rings from the main
   four-borough projection. Staten Island land, streets, railway, and trains use
   the inset projection; sending its parks through `projectMain` creates detached
@@ -92,3 +98,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   appearance control as a bare, action-oriented sun or moon glyph with its full
   44 px hit area, and preserve the personal intro line: “A city I love, moving
   through the system that connects it.”
+- Production share identity uses the blue A-train roundel: `app/icon.tsx`
+  replaces the default favicon, while `app/opengraph-image.tsx` and
+  `app/twitter-image.tsx` render the flat 1200×630 social card. Keep the social
+  image deterministic and gradient-free. Metadata URL resolution prefers
+  `NEXT_PUBLIC_SITE_URL`, then Vercel production/preview hosts, then localhost.
