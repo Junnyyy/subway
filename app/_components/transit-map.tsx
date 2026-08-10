@@ -198,16 +198,12 @@ function resizeCanvas(
 function mapTransform(
   width: number,
   height: number,
-  map: SubwayMapData,
   camera: ViewState,
-  focusStatenIsland = false,
 ) {
   const mobile = width < 640;
   const view = mobile
-    ? focusStatenIsland
-      ? { x: 78, y: 612, width: 138, height: 176 }
-      : { x: 235, y: 88, width: 555, height: 720 }
-    : { x: 0, y: 0, width: map.viewBox[0], height: map.viewBox[1] };
+    ? { x: 235, y: 88, width: 555, height: 720 }
+    : { x: 280, y: 20, width: 640, height: 780 };
   const baseScale = Math.min(width / view.width, height / view.height);
   const baseX = (width - view.width * baseScale) / 2 - view.x * baseScale;
   const baseY = (height - view.height * baseScale) / 2 - view.y * baseScale;
@@ -238,7 +234,7 @@ function drawStaticMap(
   canvas: HTMLCanvasElement,
   map: SubwayMapData,
   routes: readonly RouteDefinition[],
-  selectedRouteIds: ReadonlySet<string> | null,
+  visibleRouteIds: ReadonlySet<string> | null,
   dark: boolean,
   width: number,
   height: number,
@@ -247,17 +243,7 @@ function drawStaticMap(
   const context = resizeCanvas(canvas, width, height);
   if (!context) return;
   const colors = dark ? palette.dark : palette.light;
-  const mobile = width < 640;
-  const focusStatenIsland =
-    mobile && selectedRouteIds?.size === 1 && selectedRouteIds.has("SI");
-  const showStatenIsland = !mobile || focusStatenIsland;
-  const transform = mapTransform(
-    width,
-    height,
-    map,
-    camera,
-    focusStatenIsland,
-  );
+  const transform = mapTransform(width, height, camera);
   const routeById = new Map(routes.map((route) => [route.id, route]));
   const strokeWidth = (value: number) => value / transform.scale;
   const fontFamily = getComputedStyle(canvas).fontFamily;
@@ -277,13 +263,6 @@ function drawStaticMap(
     context.stroke(path);
   }
 
-  if (showStatenIsland) {
-    const statenIsland = new Path2D(map.statenIsland.path);
-    context.fillStyle = colors.land;
-    context.fill(statenIsland, "evenodd");
-    context.stroke(statenIsland);
-  }
-
   const parks = new Path2D(map.parks);
   context.fillStyle = colors.park;
   context.strokeStyle = colors.parkStroke;
@@ -299,24 +278,19 @@ function drawStaticMap(
   context.strokeStyle = colors.street;
   context.lineWidth = strokeWidth(1);
   context.stroke(new Path2D(map.streets.arterial));
-  if (showStatenIsland) {
-    context.lineWidth = strokeWidth(0.8);
-    context.stroke(new Path2D(map.streets.statenIsland));
-  }
-
   context.strokeStyle = colors.casing;
   context.lineWidth = strokeWidth(6.2);
   for (const shape of map.shapes) {
-    if (mobile && shape.routeId === "SI" && !focusStatenIsland) continue;
-    if (selectedRouteIds && !selectedRouteIds.has(shape.routeId)) continue;
+    if (shape.routeId === "SI") continue;
+    if (visibleRouteIds && !visibleRouteIds.has(shape.routeId)) continue;
     if (!routeById.has(shape.routeId)) continue;
     traceShape(context, shape.points);
     context.stroke();
   }
   context.lineWidth = strokeWidth(3.4);
   for (const shape of map.shapes) {
-    if (mobile && shape.routeId === "SI" && !focusStatenIsland) continue;
-    if (selectedRouteIds && !selectedRouteIds.has(shape.routeId)) continue;
+    if (shape.routeId === "SI") continue;
+    if (visibleRouteIds && !visibleRouteIds.has(shape.routeId)) continue;
     const route = routeById.get(shape.routeId);
     if (!route) continue;
     context.strokeStyle = route.color;
@@ -368,7 +342,7 @@ function drawTrains(
   canvas: HTMLCanvasElement,
   scene: LoadedScene,
   routes: readonly RouteDefinition[],
-  selectedRouteIds: ReadonlySet<string> | null,
+  visibleRouteIds: ReadonlySet<string> | null,
   width: number,
   height: number,
   seconds: number,
@@ -377,15 +351,7 @@ function drawTrains(
   const context = resizeCanvas(canvas, width, height);
   if (!context) return { total: 0, byRoute: {} };
   const mobile = width < 640;
-  const focusStatenIsland =
-    mobile && selectedRouteIds?.size === 1 && selectedRouteIds.has("SI");
-  const transform = mapTransform(
-    width,
-    height,
-    scene.map,
-    camera,
-    focusStatenIsland,
-  );
+  const transform = mapTransform(width, height, camera);
   const routeById = new Map(routes.map((route) => [route.id, route]));
   const fontFamily = getComputedStyle(canvas).fontFamily;
   const byRoute: Record<string, number> = {};
@@ -412,8 +378,7 @@ function drawTrains(
       if (!position) continue;
       total += 1;
       byRoute[route.id] = (byRoute[route.id] ?? 0) + 1;
-      if (selectedRouteIds && !selectedRouteIds.has(route.id)) continue;
-      if (mobile && route.id === "SI" && !focusStatenIsland) continue;
+      if (visibleRouteIds && !visibleRouteIds.has(route.id)) continue;
 
       const wakeStartSeconds = Math.max(
         trip.startSeconds,
@@ -543,7 +508,7 @@ function useCanvasSize(containerRef: RefObject<HTMLDivElement | null>) {
 export function TransitMap({
   scene,
   routes,
-  selectedRouteIds,
+  visibleRouteIds,
   dark,
   isPlaying,
   modelClock,
@@ -551,7 +516,7 @@ export function TransitMap({
 }: {
   scene: LoadedScene | null;
   routes: RouteDefinition[];
-  selectedRouteIds: ReadonlySet<string> | null;
+  visibleRouteIds: ReadonlySet<string> | null;
   dark: boolean;
   isPlaying: boolean;
   modelClock: ModelClock;
@@ -581,7 +546,7 @@ export function TransitMap({
   const renderInputsRef = useRef({
     scene,
     routes,
-    selectedRouteIds,
+    visibleRouteIds,
     dark,
     size,
     isPlaying,
@@ -594,12 +559,12 @@ export function TransitMap({
     renderInputsRef.current = {
       scene,
       routes,
-      selectedRouteIds,
+      visibleRouteIds,
       dark,
       size,
       isPlaying,
     };
-  }, [dark, isPlaying, routes, scene, selectedRouteIds, size]);
+  }, [dark, isPlaying, routes, scene, size, visibleRouteIds]);
 
   const constrainView = useCallback(
     (view: ViewState): ViewState => {
@@ -635,7 +600,7 @@ export function TransitMap({
         staticCanvasRef.current,
         inputs.scene.map,
         inputs.routes,
-        inputs.selectedRouteIds,
+        inputs.visibleRouteIds,
         inputs.dark,
         inputs.size.width,
         inputs.size.height,
@@ -646,7 +611,7 @@ export function TransitMap({
         trainCanvasRef.current,
         inputs.scene,
         inputs.routes,
-        inputs.selectedRouteIds,
+        inputs.visibleRouteIds,
         inputs.size.width,
         inputs.size.height,
         clockSecondsAt(clockRef.current, frameTime, inputs.isPlaying),
@@ -986,13 +951,13 @@ export function TransitMap({
       staticCanvasRef.current,
       scene.map,
       routes,
-      selectedRouteIds,
+      visibleRouteIds,
       dark,
       size.width,
       size.height,
       committedViewRef.current,
     );
-  }, [dark, routes, scene, selectedRouteIds, size.height, size.width]);
+  }, [dark, routes, scene, size.height, size.width, visibleRouteIds]);
 
   useEffect(() => {
     const canvas = trainCanvasRef.current;
@@ -1004,7 +969,7 @@ export function TransitMap({
         canvas,
         scene,
         routes,
-        selectedRouteIds,
+        visibleRouteIds,
         size.width,
         size.height,
         clockSecondsAt(clockRef.current, frameTime, isPlaying),
@@ -1053,7 +1018,7 @@ export function TransitMap({
     reducedSnapshotMinute,
     routes,
     scene,
-    selectedRouteIds,
+    visibleRouteIds,
     size.height,
     size.width,
   ]);
@@ -1093,8 +1058,8 @@ export function TransitMap({
           ref={trainCanvasRef}
           role="img"
           aria-label={
-            selectedRouteIds
-              ? "Animated scheduled trains for the selected subway routes"
+            visibleRouteIds
+              ? "Animated scheduled trains for the focused subway routes"
               : "Animated scheduled subway trains moving across a generalized map of New York City"
           }
         />

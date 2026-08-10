@@ -5,8 +5,6 @@
   --faint: #98a0a7;
   --hairline: rgb(37 48 58 / 11%);
   --panel: rgb(253 252 249 / 94%);
-  --control: rgb(253 252 249 / 96%);
-  --control-hover: #edf1f2;
   display: grid;
   grid-template-columns: 278px minmax(0, 1fr);
   min-height: 100svh;
@@ -24,8 +22,6 @@
   --faint: #545d64;
   --hairline: rgb(241 243 244 / 10%);
   --panel: rgb(8 9 11 / 97%);
-  --control: rgb(15 17 20 / 98%);
-  --control-hover: #171b1f;
   color-scheme: dark;
 }
 
@@ -37,8 +33,6 @@
     --faint: #545d64;
     --hairline: rgb(241 243 244 / 10%);
     --panel: rgb(8 9 11 / 97%);
-    --control: rgb(15 17 20 / 98%);
-    --control-hover: #171b1f;
     color-scheme: dark;
   }
 }
@@ -157,7 +151,6 @@
   text-align: left;
   touch-action: manipulation;
   transition:
-    background-color 150ms ease-out,
     color 150ms ease-out,
     opacity 150ms ease-out,
     transform 150ms ease-out;
@@ -172,13 +165,9 @@
   outline-offset: -2px;
 }
 
-.legendRow[aria-pressed="true"] {
-  background: var(--hairline);
-}
-
-.legend[data-filtered="true"] .legendRow[aria-pressed="false"] {
-  color: var(--muted);
-  opacity: 0.55;
+.legend[data-filtered="true"] .legendRow[data-active="false"] {
+  color: var(--faint);
+  opacity: 0.42;
 }
 
 .legendRow small {
@@ -190,6 +179,14 @@
   width: 14px;
   height: 4px;
   border-radius: 999px;
+  background: var(--route-color);
+  transition: background-color 150ms ease-out;
+}
+
+.legend[data-filtered="true"]
+  .legendRow[data-active="false"]
+  .legendMark {
+  background: var(--muted);
 }
 
 .stats {
@@ -351,10 +348,6 @@
     color: var(--ink);
   }
 
-  .legendRow:hover {
-    background: var(--control-hover);
-  }
-
 }
 
 @media (max-height: 760px) and (min-width: 701px) {
@@ -468,9 +461,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .iconButton,
-  .legendRow {
+  .iconButton {
     transition: background-color 150ms ease-out;
+  }
+
+  .legendRow,
+  .legendMark {
+    transition: none;
   }
 
   .iconButton:active,

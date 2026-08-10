@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
@@ -61,6 +62,16 @@ function subscribeToColorScheme(callback: () => void) {
 
 function getColorSchemeSnapshot() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function subscribeToHoverCapability(callback: () => void) {
+  const query = window.matchMedia("(hover: hover) and (pointer: fine)");
+  query.addEventListener("change", callback);
+  return () => query.removeEventListener("change", callback);
+}
+
+function getHoverCapabilitySnapshot() {
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 }
 
 function getServerSnapshot() {
@@ -128,6 +139,9 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
   const [selectedFamilyColor, setSelectedFamilyColor] = useState<string | null>(
     null,
   );
+  const [hoveredFamilyColor, setHoveredFamilyColor] = useState<string | null>(
+    null,
+  );
   const prefersReducedMotion = useSyncExternalStore(
     subscribeToReducedMotion,
     getReducedMotionSnapshot,
@@ -138,19 +152,37 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
     getColorSchemeSnapshot,
     getServerSnapshot,
   );
+  const canHover = useSyncExternalStore(
+    subscribeToHoverCapability,
+    getHoverCapabilitySnapshot,
+    getServerSnapshot,
+  );
   const isDark = theme === "dark" || (theme === "system" && systemIsDark);
   const themeAttribute = theme === "system" ? "system" : theme;
   const isPlaying = !prefersReducedMotion;
-  const selectedFamily = useMemo(
+  const coreRouteFamilies = useMemo(
     () =>
-      manifest.routeFamilies.find(
-        (family) => family.color === selectedFamilyColor,
-      ) ?? null,
-    [manifest.routeFamilies, selectedFamilyColor],
+      manifest.routeFamilies.filter(
+        (family) => !family.routeIds.includes("SI"),
+      ),
+    [manifest.routeFamilies],
   );
-  const selectedRouteIds = useMemo(
-    () => (selectedFamily ? new Set(selectedFamily.routeIds) : null),
-    [selectedFamily],
+  const coreRoutes = useMemo(
+    () => manifest.routes.filter((route) => route.id !== "SI"),
+    [manifest.routes],
+  );
+  const activeFamilyColor =
+    (canHover ? hoveredFamilyColor : null) ?? selectedFamilyColor;
+  const activeFamily = useMemo(
+    () =>
+      coreRouteFamilies.find(
+        (family) => family.color === activeFamilyColor,
+      ) ?? null,
+    [activeFamilyColor, coreRouteFamilies],
+  );
+  const activeRouteIds = useMemo(
+    () => (activeFamily ? new Set(activeFamily.routeIds) : null),
+    [activeFamily],
   );
   const modelClock = useMemo(
     () =>
@@ -271,30 +303,38 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
 
         <div
           className={styles.legend}
-          data-filtered={Boolean(selectedFamily)}
+          data-filtered={Boolean(activeFamily)}
           role="group"
           aria-label="Filter subway routes"
+          onPointerLeave={() => {
+            if (canHover) setHoveredFamilyColor(null);
+          }}
         >
-          {manifest.routeFamilies.map((family) => {
+          {coreRouteFamilies.map((family) => {
             const count = family.routeIds.reduce(
               (total, routeId) => total + (stats.byRoute[routeId] ?? 0),
               0,
             );
             const isSelected = family.color === selectedFamilyColor;
+            const isActive = family.color === activeFamilyColor;
             return (
               <button
                 className={styles.legendRow}
                 key={family.color}
                 type="button"
+                data-active={isActive}
                 aria-label={`${family.labels.join(", ")} routes`}
                 aria-pressed={isSelected}
+                style={{ "--route-color": family.color } as CSSProperties}
+                onPointerEnter={() => {
+                  if (canHover) setHoveredFamilyColor(family.color);
+                }}
                 onClick={() =>
                   setSelectedFamilyColor(isSelected ? null : family.color)
                 }
               >
                 <span
                   className={styles.legendMark}
-                  style={{ backgroundColor: family.color }}
                   aria-hidden="true"
                 />
                 <span>{family.labels.join(" ")}</span>
@@ -338,8 +378,8 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
       >
         <TransitMap
           scene={scene}
-          routes={manifest.routes}
-          selectedRouteIds={selectedRouteIds}
+          routes={coreRoutes}
+          visibleRouteIds={activeRouteIds}
           dark={isDark}
           isPlaying={isPlaying}
           modelClock={modelClock}
