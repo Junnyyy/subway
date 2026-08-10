@@ -8,9 +8,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { BoroughsVariant } from "./boroughs-variant";
-import { DiagramVariant } from "./diagram-variant";
-import { FlowVariant } from "./flow-variant";
+import { QuietGridVariant } from "./quiet-grid-variant";
+import { StreetAtlasVariant } from "./street-atlas-variant";
+import { TransitOverlayVariant } from "./transit-overlay-variant";
 import styles from "./subway-prototype.module.css";
 
 type Variant = {
@@ -19,9 +19,9 @@ type Variant = {
 };
 
 const variants: Variant[] = [
-  { name: "Boroughs", component: BoroughsVariant },
-  { name: "Diagram", component: DiagramVariant },
-  { name: "Flow", component: FlowVariant },
+  { name: "Street Atlas", component: StreetAtlasVariant },
+  { name: "Transit Overlay", component: TransitOverlayVariant },
+  { name: "Quiet Grid", component: QuietGridVariant },
 ];
 
 export function SubwayPrototype({
@@ -148,4 +148,3 @@ export function SubwayPrototype({
     </div>
   );
 }
-
