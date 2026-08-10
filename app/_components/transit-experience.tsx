@@ -284,10 +284,6 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
             <dt>Scheduled trains</dt>
             <dd>{stats.total}</dd>
           </div>
-          <div>
-            <dt>Position model</dt>
-            <dd>{isPlaying ? "Following now" : "Minute snapshots"}</dd>
-          </div>
         </dl>
 
         <div className={styles.controls}>
@@ -311,12 +307,6 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
         className={styles.mapPanel}
         aria-label="Scheduled New York City subway map"
       >
-        <div className={styles.mapTopline}>
-          <span>Transit overlay</span>
-          <span title={`GTFS ${manifest.feed.version}`}>
-            {loadError ?? "MTA static GTFS · modeled positions"}
-          </span>
-        </div>
         <TransitMap
           scene={scene}
           routes={manifest.routes}
@@ -325,9 +315,9 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
           modelClock={modelClock}
           onStats={handleStats}
         />
-        {!scene && !loadError ? (
-          <div className={styles.loading} role="status">
-            Preparing today&apos;s schedule
+        {!scene ? (
+          <div className={styles.loading} role={loadError ? "alert" : "status"}>
+            {loadError ? "Unable to prepare the schedule" : "Preparing today&apos;s schedule"}
           </div>
         ) : null}
         <p className={styles.srOnly} aria-live="polite">

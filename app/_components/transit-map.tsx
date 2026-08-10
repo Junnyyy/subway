@@ -56,7 +56,6 @@ const palette = {
     street: "rgba(88, 99, 108, 0.55)",
     localStreet: "rgba(115, 124, 132, 0.36)",
     casing: "rgba(253, 252, 249, 0.94)",
-    inset: "rgba(253, 252, 249, 0.82)",
   },
   dark: {
     water: "#060709",
@@ -70,7 +69,6 @@ const palette = {
     street: "rgba(178, 186, 192, 0.28)",
     localStreet: "rgba(158, 168, 176, 0.16)",
     casing: "rgba(5, 6, 8, 0.94)",
-    inset: "rgba(13, 15, 18, 0.96)",
   },
 } as const;
 
@@ -267,11 +265,6 @@ function drawStaticMap(
   }
 
   if (!mobile) {
-    context.fillStyle = colors.inset;
-    const inset = new Path2D(
-      "M32 606H260A12 12 0 0 1 272 618V778A12 12 0 0 1 260 790H32A12 12 0 0 1 20 778V618A12 12 0 0 1 32 606Z",
-    );
-    context.fill(inset);
     const statenIsland = new Path2D(map.statenIsland.path);
     context.fillStyle = colors.land;
     context.fill(statenIsland, "evenodd");
@@ -321,14 +314,6 @@ function drawStaticMap(
   context.font = `650 ${11 / transform.scale}px ${fontFamily}`;
   for (const borough of map.boroughs) {
     context.fillText(borough.name.toUpperCase(), borough.label.x, borough.label.y);
-  }
-  if (!mobile) {
-    context.textAlign = "left";
-    context.font = `650 ${10 / transform.scale}px ${fontFamily}`;
-    context.fillText("STATEN ISLAND", 33, 625);
-    context.fillStyle = colors.muted;
-    context.font = `500 ${8.5 / transform.scale}px ${fontFamily}`;
-    context.fillText("geographic inset", 33, 642);
   }
 
   context.lineWidth = strokeWidth(0.7);
@@ -548,10 +533,6 @@ export function TransitMap({
   const viewportLayerRef = useRef<HTMLDivElement>(null);
   const staticCanvasRef = useRef<HTMLCanvasElement>(null);
   const trainCanvasRef = useRef<HTMLCanvasElement>(null);
-  const zoomLabelRef = useRef<HTMLSpanElement>(null);
-  const zoomOutRef = useRef<HTMLButtonElement>(null);
-  const zoomResetRef = useRef<HTMLButtonElement>(null);
-  const zoomInRef = useRef<HTMLButtonElement>(null);
   const size = useCanvasSize(containerRef);
   const clockRef = useRef<AnimationClock>({
     serviceDate: "",
@@ -660,13 +641,6 @@ export function TransitMap({
             ? "none"
             : `translate3d(${relativePanX.toFixed(2)}px, ${relativePanY.toFixed(2)}px, 0) scale(${relativeZoom.toFixed(4)})`;
       }
-      const percentage = Math.round(view.zoom * 100);
-      if (zoomLabelRef.current) {
-        zoomLabelRef.current.textContent = `${percentage}%`;
-      }
-      if (zoomOutRef.current) zoomOutRef.current.disabled = view.zoom <= MIN_ZOOM;
-      if (zoomResetRef.current) zoomResetRef.current.disabled = view.zoom <= MIN_ZOOM;
-      if (zoomInRef.current) zoomInRef.current.disabled = view.zoom >= MAX_ZOOM;
       if (containerRef.current) {
         containerRef.current.dataset.zoomed = String(view.zoom > MIN_ZOOM);
       }
@@ -1073,40 +1047,6 @@ export function TransitMap({
           role="img"
           aria-label="Animated scheduled subway trains moving across a generalized map of New York City"
         />
-      </div>
-      <div className={styles.zoomHud}>
-        <span className={styles.zoomHint} aria-hidden="true">
-          Pinch or scroll to zoom · drag to move
-        </span>
-        <div className={styles.zoomControls} role="group" aria-label="Map zoom">
-          <button
-            className={styles.zoomButton}
-            ref={zoomOutRef}
-            type="button"
-            aria-label="Zoom out"
-            onClick={() => zoomAround(viewRef.current.zoom / ZOOM_STEP)}
-          >
-            <span aria-hidden="true">−</span>
-          </button>
-          <button
-            className={styles.zoomReset}
-            ref={zoomResetRef}
-            type="button"
-            aria-label="Reset map view"
-            onClick={resetView}
-          >
-            <span ref={zoomLabelRef} data-initial-label="100%" />
-          </button>
-          <button
-            className={styles.zoomButton}
-            ref={zoomInRef}
-            type="button"
-            aria-label="Zoom in"
-            onClick={() => zoomAround(viewRef.current.zoom * ZOOM_STEP)}
-          >
-            <span aria-hidden="true">+</span>
-          </button>
-        </div>
       </div>
     </div>
   );

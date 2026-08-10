@@ -249,30 +249,6 @@
   isolation: isolate;
 }
 
-.mapTopline {
-  position: absolute;
-  z-index: 2;
-  top: 20px;
-  right: 24px;
-  left: 24px;
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 620;
-  letter-spacing: 0.08em;
-  pointer-events: none;
-  text-transform: uppercase;
-}
-
-.mapTopline span:last-child {
-  overflow: hidden;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .canvasStack {
   position: absolute;
   inset: 0;
@@ -313,89 +289,6 @@
   pointer-events: none;
 }
 
-.zoomHud {
-  position: absolute;
-  z-index: 3;
-  right: 72px;
-  bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  pointer-events: none;
-}
-
-.zoomHint {
-  padding: 7px 10px;
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  background: var(--control);
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 590;
-  letter-spacing: 0.01em;
-}
-
-.zoomControls {
-  display: grid;
-  grid-template-columns: 44px 54px 44px;
-  height: 44px;
-  overflow: hidden;
-  border: 1px solid var(--hairline);
-  border-radius: 999px;
-  background: var(--control);
-  pointer-events: auto;
-}
-
-.zoomButton,
-.zoomReset {
-  display: grid;
-  height: 44px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  touch-action: manipulation;
-  transition: background-color 150ms ease-out, color 150ms ease-out;
-}
-
-.zoomButton {
-  width: 44px;
-  font-size: 20px;
-  font-weight: 420;
-  line-height: 1;
-}
-
-.zoomReset {
-  width: 54px;
-  border-inline: 1px solid var(--hairline);
-  color: var(--muted);
-  font-size: 9px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.01em;
-}
-
-.zoomReset span:empty::before {
-  content: attr(data-initial-label);
-}
-
-.zoomButton:disabled,
-.zoomReset:disabled {
-  color: var(--faint);
-  cursor: default;
-  opacity: 0.52;
-}
-
-.zoomButton:focus-visible,
-.zoomReset:focus-visible {
-  position: relative;
-  z-index: 1;
-  outline: 2px solid var(--ink);
-  outline-offset: -3px;
-}
-
 .loading {
   position: absolute;
   top: 50%;
@@ -424,10 +317,6 @@
     color: var(--ink);
   }
 
-  .zoomButton:hover:not(:disabled),
-  .zoomReset:hover:not(:disabled) {
-    background: var(--control-hover);
-  }
 }
 
 @media (max-height: 760px) and (min-width: 701px) {
@@ -536,30 +425,10 @@
     min-height: 56svh;
   }
 
-  .mapTopline {
-    top: 15px;
-    right: 16px;
-    left: 16px;
-  }
-
-  .mapTopline span:last-child {
-    display: none;
-  }
-
-  .zoomHud {
-    right: 16px;
-    bottom: 16px;
-  }
-
-  .zoomHint {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .iconButton,
-  .zoomButton,
-  .zoomReset {
+  .iconButton {
     transition: background-color 150ms ease-out;
   }
 
