@@ -27,7 +27,6 @@ import {
 } from "./transit-map";
 import styles from "../page.module.css";
 
-type PlaybackMode = "auto" | "playing" | "paused";
 type ThemeMode = "system" | ThemeName;
 
 const jsonCache = new Map<string, Promise<unknown>>();
@@ -103,22 +102,6 @@ function resolveModelClock(now: number, manifest: SubwayManifest): ModelClock {
   };
 }
 
-function PlayIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20">
-      <path d="m7 5 7 5-7 5V5Z" />
-    </svg>
-  );
-}
-
-function PauseIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20">
-      <path d="M6.75 5.25v9.5M13.25 5.25v9.5" />
-    </svg>
-  );
-}
-
 function ThemeIcon({ dark }: { dark: boolean }) {
   if (dark) {
     return (
@@ -137,8 +120,6 @@ function ThemeIcon({ dark }: { dark: boolean }) {
 
 export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
   const [now, setNow] = useState(0);
-  const [pausedAt, setPausedAt] = useState<number | null>(null);
-  const [playback, setPlayback] = useState<PlaybackMode>("auto");
   const [theme, setTheme] = useState<ThemeMode>("system");
   const [scene, setScene] = useState<LoadedScene | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -154,34 +135,31 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
     getServerSnapshot,
   );
   const isDark = theme === "dark" || (theme === "system" && systemIsDark);
-  const isPlaying =
-    playback === "playing" ||
-    (playback === "auto" && !prefersReducedMotion);
-  const modelNow = pausedAt ?? now;
+  const isPlaying = !prefersReducedMotion;
   const modelClock = useMemo(
     () =>
-      modelNow
-        ? resolveModelClock(modelNow, manifest)
+      now
+        ? resolveModelClock(now, manifest)
         : {
             serviceDate: "",
             seconds: 0,
             replay: false,
           },
-    [manifest, modelNow],
+    [manifest, now],
   );
-  const displayedClock = modelNow
+  const displayedClock = now
     ? formatClock(modelClock.seconds)
     : { time: "—:—:—", suffix: "" };
 
   useEffect(() => {
     const tick = () => setNow(Date.now());
     const firstTick = window.setTimeout(tick, 0);
-    const timer = isPlaying ? window.setInterval(tick, 1_000) : 0;
+    const timer = window.setInterval(tick, 1_000);
     return () => {
       window.clearTimeout(firstTick);
-      if (timer) window.clearInterval(timer);
+      window.clearInterval(timer);
     };
-  }, [isPlaying]);
+  }, []);
 
   useEffect(() => {
     if (!modelClock.serviceDate) return;
@@ -237,19 +215,6 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
       ignore = true;
     };
   }, [manifest, modelClock.serviceDate]);
-
-  const togglePlayback = () => {
-    if (isPlaying) {
-      const paused = Date.now();
-      setNow(paused);
-      setPausedAt(paused);
-      setPlayback("paused");
-      return;
-    }
-    setPausedAt(null);
-    setNow(Date.now());
-    setPlayback("playing");
-  };
 
   const toggleTheme = () => {
     if (theme === "system") {
@@ -319,19 +284,11 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
           </div>
           <div>
             <dt>Position model</dt>
-            <dd>{isPlaying ? "Following now" : "Paused"}</dd>
+            <dd>{isPlaying ? "Following now" : "Minute snapshots"}</dd>
           </div>
         </dl>
 
         <div className={styles.controls}>
-          <button
-            className={styles.iconButton}
-            type="button"
-            aria-label={isPlaying ? "Pause scheduled trains" : "Return to now"}
-            onClick={togglePlayback}
-          >
-            {isPlaying ? <PauseIcon /> : <PlayIcon />}
-          </button>
           <button
             className={styles.iconButton}
             type="button"
@@ -340,9 +297,6 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
           >
             <ThemeIcon dark={isDark} />
           </button>
-          {prefersReducedMotion && !isPlaying ? (
-            <span className={styles.motionNote}>Motion paused</span>
-          ) : null}
         </div>
 
         <p className={styles.disclosure}>
