@@ -10,6 +10,10 @@ import { useMapControls } from "./use-map-controls";
 export function FlowVariant() {
   const svgRef = useRef<SVGSVGElement>(null);
   const controls = useMapControls(svgRef);
+  const visibleRouteFamilies = routeFamilies.filter(
+    (route) => route.id !== "sir",
+  );
+  const visibleTrainCount = visibleRouteFamilies.length * 2;
 
   return (
     <main
@@ -41,25 +45,22 @@ export function FlowVariant() {
 
       <footer className={styles.flowFooter}>
         <div className={styles.flowMetric}>
-          <span className={styles.flowMetricValue}>42</span>
+          <span className={styles.flowMetricValue}>{visibleTrainCount}</span>
           <span>trains in view</span>
         </div>
         <div className={styles.flowRouteMarks} aria-label="Visible route groups">
-          {routeFamilies
-            .filter((route) => route.id !== "sir")
-            .map((route) => (
-              <span key={route.id}>
-                <i
-                  style={{ backgroundColor: route.color }}
-                  aria-hidden="true"
-                />
-                {route.services[0]}
-              </span>
-            ))}
+          {visibleRouteFamilies.map((route) => (
+            <span key={route.id}>
+              <i
+                style={{ backgroundColor: route.color }}
+                aria-hidden="true"
+              />
+              {route.services[0]}
+            </span>
+          ))}
         </div>
         <p>Representative movement · static weekday schedule</p>
       </footer>
     </main>
   );
 }
-
