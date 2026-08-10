@@ -6,6 +6,7 @@ import {
   parseGtfsTime,
   positionAtDistance,
   sampleScheduledTrip,
+  shapePointsBetweenDistances,
   shiftServiceDate,
 } from "../lib/subway/schedule.ts";
 import type { ScheduledTrip, ShapeDefinition } from "../lib/subway/types.ts";
@@ -82,6 +83,21 @@ test("holds a scheduled train during dwell time", () => {
     progress: 0,
   });
   assert.equal(sampleScheduledTrip(trip, shape, 165)?.distance, 10);
+});
+
+test("traces a scheduled wake through the actual shape geometry", () => {
+  const curvedShape: ShapeDefinition = {
+    id: "curve",
+    routeId: "A",
+    points: [0, 0, 10, 10, 20, 0],
+    distances: [0, 10, 20],
+  };
+
+  assert.deepEqual(shapePointsBetweenDistances(curvedShape, 5, 15), [
+    { x: 5, y: 5 },
+    { x: 10, y: 10 },
+    { x: 15, y: 5 },
+  ]);
 });
 
 test("interpolates between scheduled stops and clamps shape distances", () => {

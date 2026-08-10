@@ -9,7 +9,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { getNewYorkClock, sampleScheduledTrip } from "@/lib/subway/schedule";
+import {
+  getNewYorkClock,
+  sampleScheduledTrip,
+  shapePointsBetweenDistances,
+} from "@/lib/subway/schedule";
 import type {
   RouteDefinition,
   ScheduleChunk,
@@ -92,6 +96,13 @@ type Point = {
   y: number;
 };
 
+type AnimationClock = {
+  serviceDate: string;
+  replay: boolean;
+  seconds: number;
+  capturedAt: number;
+};
+
 type SafariGestureEvent = Event & {
   clientX?: number;
   clientY?: number;
@@ -126,6 +137,47 @@ function pointMidpoint(first: Point, second: Point) {
     x: (first.x + second.x) / 2,
     y: (first.y + second.y) / 2,
   };
+}
+
+function polylineLength(points: readonly Point[]) {
+  let length = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    length += pointDistance(points[index - 1], points[index]);
+  }
+  return length;
+}
+
+function pointAlongPolyline(points: readonly Point[], distance: number) {
+  if (!points.length) return null;
+  let remaining = Math.max(0, distance);
+
+  for (let index = 1; index < points.length; index += 1) {
+    const start = points[index - 1];
+    const end = points[index];
+    const segmentLength = pointDistance(start, end);
+    if (remaining <= segmentLength) {
+      const progress = segmentLength > 0 ? remaining / segmentLength : 0;
+      return {
+        x: start.x + (end.x - start.x) * progress,
+        y: start.y + (end.y - start.y) * progress,
+      };
+    }
+    remaining -= segmentLength;
+  }
+
+  return points.at(-1) ?? null;
+}
+
+function clockSecondsAt(
+  clock: AnimationClock,
+  frameTime: number,
+  isPlaying: boolean,
+) {
+  const elapsed =
+    isPlaying && clock.capturedAt > 0
+      ? Math.max(0, frameTime - clock.capturedAt) / 1_000
+      : 0;
+  return clock.seconds + elapsed;
 }
 
 function resizeCanvas(
@@ -355,20 +407,19 @@ function drawTrains(
         serviceSeconds - TRAIN_WAKE_SECONDS,
       );
       const wakeStart = sampleScheduledTrip(trip, shape, wakeStartSeconds);
-      const wakeMiddle = sampleScheduledTrip(
-        trip,
-        shape,
-        (wakeStartSeconds + serviceSeconds) / 2,
-      );
       const recentPosition = sampleScheduledTrip(
         trip,
         shape,
         Math.max(trip.startSeconds, serviceSeconds - TRAIN_MOTION_SAMPLE_SECONDS),
       );
-      if (wakeStart && wakeMiddle) {
-        const wakeDistance =
-          Math.hypot(position.x - wakeStart.x, position.y - wakeStart.y) *
-          transform.scale;
+      if (wakeStart) {
+        const wakePoints = shapePointsBetweenDistances(
+          shape,
+          wakeStart.distance,
+          position.distance,
+        );
+        const wakeLength = polylineLength(wakePoints);
+        const wakeDistance = wakeLength * transform.scale;
         if (wakeDistance > 1.5) {
           context.save();
           context.globalAlpha = 0.36;
@@ -377,9 +428,10 @@ function drawTrains(
           context.lineCap = "round";
           context.lineJoin = "round";
           context.beginPath();
-          context.moveTo(wakeStart.x, wakeStart.y);
-          context.lineTo(wakeMiddle.x, wakeMiddle.y);
-          context.lineTo(position.x, position.y);
+          context.moveTo(wakePoints[0].x, wakePoints[0].y);
+          for (const point of wakePoints.slice(1)) {
+            context.lineTo(point.x, point.y);
+          }
           context.stroke();
           context.globalAlpha = 0.5;
           context.strokeStyle = route.textColor;
@@ -393,59 +445,39 @@ function drawTrains(
               ) * transform.scale
             : 0;
           if (recentDistance > 0.15) {
-            const firstLength = Math.hypot(
-              wakeMiddle.x - wakeStart.x,
-              wakeMiddle.y - wakeStart.y,
-            );
-            const secondLength = Math.hypot(
-              position.x - wakeMiddle.x,
-              position.y - wakeMiddle.y,
-            );
-            const totalLength = firstLength + secondLength;
             const phaseOffset =
               ((trip.startSeconds * 0.017 + trip.shapeIndex * 0.13) % 1 + 1) % 1;
             const phase =
               ((serviceSeconds / TRAIN_GLINT_CYCLE_SECONDS + phaseOffset) % 1 +
                 1) %
               1;
-            const traveled = phase * totalLength;
-            const useFirstSegment = traveled <= firstLength;
-            const segmentLength = useFirstSegment ? firstLength : secondLength;
-            const segmentProgress =
-              segmentLength > 0
-                ? (useFirstSegment ? traveled : traveled - firstLength) /
-                  segmentLength
-                : 0;
-            const segmentStart = useFirstSegment ? wakeStart : wakeMiddle;
-            const segmentEnd = useFirstSegment ? wakeMiddle : position;
-            const glintX =
-              segmentStart.x + (segmentEnd.x - segmentStart.x) * segmentProgress;
-            const glintY =
-              segmentStart.y + (segmentEnd.y - segmentStart.y) * segmentProgress;
+            const glint = pointAlongPolyline(wakePoints, phase * wakeLength);
             const glintAlpha = Math.sin(Math.PI * phase) ** 2;
 
-            context.globalAlpha = 0.22 * glintAlpha;
-            context.fillStyle = route.color;
-            context.beginPath();
-            context.arc(
-              glintX,
-              glintY,
-              3.2 / transform.scale,
-              0,
-              Math.PI * 2,
-            );
-            context.fill();
-            context.globalAlpha = 0.9 * glintAlpha;
-            context.fillStyle = route.textColor;
-            context.beginPath();
-            context.arc(
-              glintX,
-              glintY,
-              1.65 / transform.scale,
-              0,
-              Math.PI * 2,
-            );
-            context.fill();
+            if (glint) {
+              context.globalAlpha = 0.22 * glintAlpha;
+              context.fillStyle = route.color;
+              context.beginPath();
+              context.arc(
+                glint.x,
+                glint.y,
+                3.2 / transform.scale,
+                0,
+                Math.PI * 2,
+              );
+              context.fill();
+              context.globalAlpha = 0.9 * glintAlpha;
+              context.fillStyle = route.textColor;
+              context.beginPath();
+              context.arc(
+                glint.x,
+                glint.y,
+                1.65 / transform.scale,
+                0,
+                Math.PI * 2,
+              );
+              context.fill();
+            }
           }
           context.restore();
         }
@@ -521,7 +553,12 @@ export function TransitMap({
   const zoomResetRef = useRef<HTMLButtonElement>(null);
   const zoomInRef = useRef<HTMLButtonElement>(null);
   const size = useCanvasSize(containerRef);
-  const clockRef = useRef({ seconds: modelClock.seconds, capturedAt: 0 });
+  const clockRef = useRef<AnimationClock>({
+    serviceDate: "",
+    replay: false,
+    seconds: modelClock.seconds,
+    capturedAt: 0,
+  });
   const statsRef = useRef({ signature: "", reportedAt: 0 });
   const viewRef = useRef<ViewState>({ zoom: 1, panX: 0, panY: 0 });
   const committedViewRef = useRef<ViewState>({ zoom: 1, panX: 0, panY: 0 });
@@ -581,16 +618,13 @@ export function TransitMap({
         view,
       );
       const frameTime = performance.now();
-      const elapsed = inputs.isPlaying
-        ? Math.max(0, frameTime - clockRef.current.capturedAt) / 1_000
-        : 0;
       drawTrains(
         trainCanvasRef.current,
         inputs.scene,
         inputs.routes,
         inputs.size.width,
         inputs.size.height,
-        clockRef.current.seconds + elapsed,
+        clockSecondsAt(clockRef.current, frameTime, inputs.isPlaying),
         view,
       );
     }
@@ -896,11 +930,21 @@ export function TransitMap({
   }, [commitView, pointFromClient, zoomAround]);
 
   useEffect(() => {
+    const clock = clockRef.current;
+    const shouldAnchor =
+      modelClock.serviceDate &&
+      (clock.capturedAt === 0 ||
+        clock.serviceDate !== modelClock.serviceDate ||
+        clock.replay !== modelClock.replay);
+    if (!shouldAnchor) return;
+
     clockRef.current = {
+      serviceDate: modelClock.serviceDate,
+      replay: modelClock.replay,
       seconds: modelClock.seconds,
       capturedAt: performance.now(),
     };
-  }, [modelClock.seconds, modelClock.serviceDate]);
+  }, [modelClock.replay, modelClock.seconds, modelClock.serviceDate]);
 
   useEffect(() => {
     applyView(viewRef.current);
@@ -937,16 +981,13 @@ export function TransitMap({
     let animationFrame = 0;
 
     const draw = (frameTime: number) => {
-      const elapsed = isPlaying
-        ? Math.max(0, frameTime - clockRef.current.capturedAt) / 1_000
-        : 0;
       const nextStats = drawTrains(
         canvas,
         scene,
         routes,
         size.width,
         size.height,
-        clockRef.current.seconds + elapsed,
+        clockSecondsAt(clockRef.current, frameTime, isPlaying),
         committedViewRef.current,
       );
       const signature = `${nextStats.total}:${Object.entries(nextStats.byRoute)
@@ -967,8 +1008,11 @@ export function TransitMap({
 
     const handleVisibility = () => {
       if (!document.hidden && isPlaying && !animationFrame) {
+        const now = new Date();
+        const currentClock = getNewYorkClock(now);
         clockRef.current = {
-          seconds: getNewYorkClock().seconds,
+          ...clockRef.current,
+          seconds: currentClock.seconds + now.getMilliseconds() / 1_000,
           capturedAt: performance.now(),
         };
         animationFrame = requestAnimationFrame(draw);

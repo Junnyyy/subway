@@ -151,6 +151,31 @@ export function positionAtDistance(
   };
 }
 
+export function shapePointsBetweenDistances(
+  shape: ShapeDefinition,
+  startDistance: number,
+  endDistance: number,
+) {
+  const start = positionAtDistance(shape, startDistance);
+  const end = positionAtDistance(shape, endDistance);
+  if (!start || !end) return [];
+  if (start.distance === end.distance) return [{ x: start.x, y: start.y }];
+
+  const forward = start.distance < end.distance;
+  const lowerDistance = Math.min(start.distance, end.distance);
+  const upperDistance = Math.max(start.distance, end.distance);
+  const points = [{ x: start.x, y: start.y }];
+
+  for (let index = 0; index < shape.distances.length; index += 1) {
+    const distance = shape.distances[index];
+    if (distance <= lowerDistance || distance >= upperDistance) continue;
+    points.push({ x: shape.points[index * 2], y: shape.points[index * 2 + 1] });
+  }
+
+  points.push({ x: end.x, y: end.y });
+  return forward ? points : points.reverse();
+}
+
 export function sampleScheduledTrip(
   trip: ScheduledTrip,
   shape: ShapeDefinition,

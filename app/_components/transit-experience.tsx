@@ -91,13 +91,14 @@ function formatServiceDate(serviceDate: string) {
 }
 
 function resolveModelClock(now: number, manifest: SubwayManifest): ModelClock {
-  const clock = getNewYorkClock(new Date(now));
+  const date = new Date(now);
+  const clock = getNewYorkClock(date);
   const isCovered =
     clock.serviceDate >= manifest.feed.startDate &&
     clock.serviceDate <= manifest.feed.endDate;
   return {
     serviceDate: isCovered ? clock.serviceDate : manifest.feed.endDate,
-    seconds: clock.seconds,
+    seconds: clock.seconds + date.getMilliseconds() / 1_000,
     replay: !isCovered,
   };
 }
