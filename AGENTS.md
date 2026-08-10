@@ -75,13 +75,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `passive: false` as well; relying on React's delegated wheel event can let the
   same gesture scroll the document. Prevent propagation only inside the map so
   scrolling over the sidebar and other page surfaces remains native.
-- Train motion wakes visualize the actual prior 75 seconds of each scheduled
-  trip rather than increasing simulated speed. Keep them route-colored with a
-  thin contrasting core, omit wakes shorter than 1.5 screen px, and use the
-  small traveling glint only when the train moved during the prior 5 seconds.
-  Trace wakes and glints through the GTFS shape vertices between their sampled
-  distances; straight chords visibly leave curved route lines at high zoom.
-  Preserve the reduced-motion minute snapshots.
+- Train direction uses a fixed 15 screen-pixel stem immediately behind each
+  moving roundel, with a route-colored outer stroke and thin contrasting core.
+  Trace the stem through the local GTFS shape vertices so it remains on curved
+  tracks at high zoom, and omit it when the train has not moved during the
+  prior 5 seconds. Do not restore time-based wakes or traveling glints: their
+  length and animation become visual noise at rush-hour density. Preserve the
+  reduced-motion minute snapshots.
 - The Canvas animation clock is monotonic between schedule-date or replay-mode
   changes. Do not re-anchor it to the once-per-second React display clock; that
   tiny correction appears as train jitter at 5× zoom. Re-anchor only after a
