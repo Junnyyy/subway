@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Subway in Motion
 
-## Getting Started
+![Subway in Motion — a blue A train line on a near-black field](./public/brand/subway-in-motion.svg)
 
-First, run the development server:
+A minimal, animated view of New York City’s subway network following the MTA’s published static schedule. It is designed as a visual spectacle: original city cartography, recognizable landmarks, restrained route color, and scheduled trains moving through the network in New York time.
+
+This is not a live train tracker and is not an official MTA map or application.
+
+## What it includes
+
+- Original Canvas cartography with Manhattan detail, major outer-borough streets, parks, landmarks, and a Staten Island inset.
+- Schedule-modeled train positions generated from MTA static GTFS stop times and shapes.
+- Light and dark appearances that default to the user’s device setting without a first-paint theme flash.
+- Pointer, keyboard, wheel, and trackpad navigation through 500% zoom.
+- Reduced-motion minute snapshots, responsive layouts, and high-density Canvas rendering.
+- Build-time Open Graph and Twitter cards plus a hand-authored SVG app icon.
+
+## Local development
+
+This repository uses pnpm.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Run the release checks with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm build
+```
 
-## Learn More
+## Schedule data
 
-To learn more about Next.js, take a look at the following resources:
+The committed production bundle currently uses MTA feed version `20260807-H-rockaways-extension-removed`, covering May 26 through October 31, 2026. The source of truth is [`public/data/subway/manifest.json`](./public/data/subway/manifest.json).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+No external database, API key, or runtime data service is required. The browser loads the generated, content-hashed map and schedule chunks from [`public/data/subway`](./public/data/subway).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The regular MTA subway GTFS represents the normal schedule and does not include most temporary service changes. Before deploying outside the manifest’s coverage window—or when a new MTA timetable becomes effective—download a fresh static GTFS snapshot and rebuild the bundle:
 
-## Deploy on Vercel
+```bash
+MTA_GTFS_DIRECTORY=/path/to/google_transit \
+NYC_BOROUGHS_FILE=/path/to/boroughs.geojson \
+NYC_MAJOR_STREETS_FILE=/path/to/major-streets.geojson \
+NYC_MANHATTAN_STREETS_FILE=/path/to/manhattan-streets.geojson \
+NYC_PARKS_FILE=/path/to/parks.geojson \
+pnpm data:build
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+See [`data/subway/README.md`](./data/subway/README.md) for source requirements and reproducibility details.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+The application can be deployed as a standard Next.js app. On Vercel, production and preview domains are detected automatically. For another host, set `NEXT_PUBLIC_SITE_URL` to the public origin so social metadata resolves to absolute URLs.
+
+The generated schedule bundle is valid for an immediate release on August 10, 2026. Refresh it before October 31, 2026 if the application needs to remain current beyond that timetable.
+
+## Data and identity
+
+Schedule data comes from [MTA Developer Resources](https://www.mta.info/developers). Geography is derived from NYC open-data borough, street-centerline, and functional-parkland datasets. Every source file is hashed in the generated manifest.
+
+The interface and cartography are original, but MTA subway route indicators—including the blue A-train roundel used in the app icon and social card—are MTA intellectual property. A public release that retains those indicators should follow the [MTA Licensing Program](https://www.mta.info/doing-business-with-us/licensing-program). Replace the roundel with an original mark if licensing is not desired.
