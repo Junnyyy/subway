@@ -30,17 +30,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   Flow with Street Atlas, Transit Overlay, and Quiet Grid. All three share the
   same geographic substrate so reviews compare visual density and information
   hierarchy rather than unrelated map shapes.
-- The corridor-rendering study is isolated at
-  `app/prototypes/network-rendering` and compares Reference, Trunk Bands, and
-  Shared Lanes without changing the production map. Keep its picker and
-  prototype-only data out of the production component graph until the user
-  selects a direction.
-- `scripts/prototypes/generate-network-rendering.mjs` writes the study's
-  `public/data/prototypes/network-rendering.json` artifact from the same MTA
-  GTFS and NYC borough projection as production. It keeps 22,597 points at a
-  `0.06` simplification tolerance versus production's 11,890 points at `0.24`.
-  Shared Lanes detects nearby parallel color families with a direction-aware
-  spatial grid; its computed lane geometry is cached across picker switches.
 - `scripts/generate-subway-prototype-data.mjs` produces the prototype-only
   `city-map-data.ts` artifact from official NYC borough, street-centerline, and
   functional-parkland GeoJSON plus the static MTA subway GTFS. It merges road
@@ -62,6 +51,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   generator projects every trip stop monotonically onto its GTFS shape and
   preserves service times beyond `24:00:00`; do not repeat this work in the
   browser or bundle the raw GTFS tables into React.
+- Production uses the selected Shared Lanes treatment. The compiler keeps main
+  route shapes at a `0.06` simplification tolerance, detects nearby parallel
+  color families with a direction-aware spatial grid, and stores a smoothed
+  lane factor for every shape vertex. The renderer applies 4.7 screen pixels
+  of spacing per factor with 4.4 px casing and 2.6 px color strokes. Tracks,
+  train positions, and direction stems must all use `shapePointAtIndex`; never
+  offset only the painted line or recompute corridor membership in the browser.
+  Preserve the constant screen spacing across 1–5× zoom and verify both the
+  desktop frame and the 390 px mobile crop after geometry changes.
 - Use the repository's native `pnpm` workflow for development, data generation,
   tests, and builds; do not substitute npm or Corepack commands.
 - The production route renders the geographic base and moving trains on two
@@ -129,8 +127,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `NEXT_PUBLIC_SITE_URL`, then Vercel production/preview hosts, then localhost.
 - `README.md` is the public technical overview of the position model. Keep its
   stop-to-shape projection, monotonic shape distance, smoothstep schedule
-  interpolation, previous-day GTFS handling, and content-hashed compiler steps
-  synchronized with `scripts/subway` and `lib/subway/schedule.ts`.
+  interpolation, shared-lane equation, previous-day GTFS handling, and
+  content-hashed compiler steps synchronized with `scripts/subway` and
+  `lib/subway/schedule.ts`.
 - The initial `system` appearance must be represented as `data-theme="system"`
   in server-rendered markup. CSS resolves those tokens through
   `prefers-color-scheme` before hydration; JavaScript still resolves the same
@@ -155,5 +154,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   simplified projections of the hashed NYC datasets, while route paths and
   scheduled motion come from hashed MTA GTFS shapes, trips, stops, and stop
   times. Tests must keep every route in exactly one matching color family,
-  verify shape-distance parity and monotonicity, constrain all points to the
-  intended main or Staten Island frame, and preserve unique in-bounds labels.
+  verify point, distance, and lane-factor parity plus monotonic distances,
+  constrain all points to the intended main or Staten Island frame, and
+  preserve unique in-bounds labels.

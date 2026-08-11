@@ -107,6 +107,41 @@ $$
 That point becomes the center of the train roundel. A short direction stem is
 traced through the same shape vertices, so it stays attached to curved tracks.
 
+### 4. Separate services into shared lanes
+
+Several subway families use the same corridor. Drawing them on one centerline
+hides services according to paint order, so the compiler finds nearby route
+families that run in roughly the same direction and assigns each one a centered
+lane factor.
+
+For a family with ordered lane index $j$ among $m$ nearby families, the initial
+factor is:
+
+$$
+f_i = j - \frac{m-1}{2}
+$$
+
+The compiler smooths each shape's factors three times with a local weighted
+average:
+
+$$
+f_i^{(k+1)} = \frac{1}{4}f_{i-1}^{(k)}
++ \frac{1}{2}f_i^{(k)}
++ \frac{1}{4}f_{i+1}^{(k)}
+$$
+
+If $\hat{n}_i$ is the stable normal at a shape vertex and $\sigma$ is the
+current map-to-screen scale, its rendered point is:
+
+$$
+r_i^{\text{lane}} = r_i + f_i\frac{4.7}{\sigma}\hat{n}_i
+$$
+
+Dividing by $\sigma$ keeps the lane spacing at a constant screen size at every
+zoom level. The colored track, train roundel, and direction stem all sample
+this same lane-aware geometry. A train therefore cannot drift away from the
+line it belongs to.
+
 ## Building the data
 
 The compiler reads these MTA GTFS files:
@@ -118,16 +153,17 @@ The compiler reads these MTA GTFS files:
 It also reads NYC borough, street-centerline, and park GeoJSON. Coordinates are
 placed in a local projection centered near New York, rotated by $-29^\circ$ to
 give Manhattan its familiar upright orientation, fitted to a $1200 \times 820$
-view box, and simplified for Canvas rendering.
+view box, and simplified at a `0.06` tolerance for clean curves at high zoom.
 
 The compiler then:
 
 1. Creates the borough, street, park, landmark, and route geometry.
-2. Projects every trip stop onto its route shape.
-3. Stores arrival, departure, and shape-distance keyframes for each trip.
-4. Groups trips by GTFS service calendar.
-5. Writes content-hashed map and schedule chunks.
-6. Writes `manifest.json` last, with feed dates and SHA-256 hashes for every
+2. Detects shared corridors and compiles a lane factor for every route vertex.
+3. Projects every trip stop onto its route shape.
+4. Stores arrival, departure, and shape-distance keyframes for each trip.
+5. Groups trips by GTFS service calendar.
+6. Writes content-hashed map and schedule chunks.
+7. Writes `manifest.json` last, with feed dates and SHA-256 hashes for every
    source file.
 
 The browser selects service with the MTA calendar and exception tables. It
