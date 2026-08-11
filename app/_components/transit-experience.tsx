@@ -282,7 +282,6 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
         <div className={styles.intro}>
           <p className={styles.eyebrow}>New York City</p>
           <h1>Subway in motion</h1>
-          <p>A city I love, moving through the system that connects it.</p>
         </div>
 
         <div className={styles.timeBlock}>

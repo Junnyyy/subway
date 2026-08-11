@@ -60,15 +60,6 @@
   text-wrap: balance;
 }
 
-.intro > p:last-child {
-  max-width: 25ch;
-  margin: 16px 0 0;
-  color: var(--muted);
-  font-size: 14px;
-  line-height: 1.5;
-  text-wrap: pretty;
-}
-
 .eyebrow {
   margin: 0 0 10px;
   color: var(--muted);
@@ -376,12 +367,6 @@
     font-size: 32px;
   }
 
-  .intro > p:last-child {
-    margin-top: 12px;
-    font-size: 13px;
-    line-height: 1.45;
-  }
-
   .timeBlock {
     margin-top: 20px;
     padding-block: 14px;
@@ -439,10 +424,6 @@
   .intro h1 {
     font-size: 30px;
     line-height: 1.08;
-  }
-
-  .intro > p:last-child {
-    display: none;
   }
 
   .timeBlock {
