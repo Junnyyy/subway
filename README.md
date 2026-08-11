@@ -1,24 +1,158 @@
 # Subway in Motion
 
-![Subway in Motion — a blue A train line on a near-black field](./public/brand/subway-in-motion.svg)
+![Subway in Motion with a blue A train line](./public/brand/subway-in-motion.svg)
 
-A minimal, animated view of New York City’s subway network following the MTA’s published static schedule. It is designed as a visual spectacle: original city cartography, recognizable landmarks, restrained route color, and scheduled trains moving through the network in New York time.
+An original, animated map of New York City and its subway network. It shows
+where trains would be right now if they followed the MTA's published static
+schedule.
 
-This is not a live train tracker and is not an official MTA map or application.
+This is not a live train tracker or an official MTA map.
 
-## What it includes
+## How it works
 
-- Original Canvas cartography centered on Manhattan, the Bronx, Brooklyn, and Queens, with major streets, parks, and landmarks.
-- Schedule-modeled train positions generated from MTA static GTFS stop times and shapes.
-- Desktop hover previews and click-to-pin route-family filters, with touch and keyboard selection preserved.
-- Light and dark appearances that default to the user’s device setting without a first-paint theme flash.
-- Pointer, keyboard, wheel, and trackpad navigation through 500% zoom.
-- Reduced-motion minute snapshots, responsive layouts, and high-density Canvas rendering.
-- Build-time Open Graph and Twitter cards plus a hand-authored SVG app icon.
+The app has two parts:
 
-## Local development
+1. A build script turns MTA GTFS and NYC geographic data into small,
+   browser-ready files.
+2. A Canvas renderer samples the current New York time and draws every
+   scheduled train at its estimated position.
 
-This repository uses pnpm.
+```text
+MTA GTFS + NYC GeoJSON
+          |
+          v
+  data compiler
+          |
+          +--> map.<hash>.json
+          +--> schedule-<service>.<hash>.json
+          +--> manifest.json
+                       |
+                       v
+              two Canvas layers
+              map + moving trains
+```
+
+The interface uses Next.js 16.3, React 19.2, TypeScript, and the Canvas 2D API.
+The static map and animated trains live on separate canvases, so the city only
+needs to redraw after a resize, theme change, route filter, or committed camera
+move. Train positions are sampled outside React state on each animation frame.
+
+## The position model
+
+GTFS gives us stop times and route shapes, but it does not give each stop's
+distance along a shape. The compiler calculates that distance first.
+
+### 1. Project a stop onto its shape
+
+For a stop point $p$ and a shape segment from $a$ to $b$, the nearest point on
+the segment is:
+
+$$
+u = \operatorname{clamp}\left(
+\frac{(p-a) \cdot (b-a)}{\lVert b-a \rVert^2}, 0, 1
+\right)
+$$
+
+$$
+\hat{p} = a + u(b-a)
+$$
+
+If $S_j$ is the cumulative shape distance at the start of that segment, the
+stop's distance along the shape is:
+
+$$
+s_i = S_j + u\lVert b-a \rVert
+$$
+
+Stops are processed in trip order. The segment search only moves forward, and
+the final distance is clamped so that $s_i \ge s_{i-1}$. This prevents a trip
+from jumping backward where a route crosses or runs close to itself.
+
+### 2. Move between scheduled stops
+
+Each trip becomes a list of keyframes $(a_i, d_i, s_i)$ for arrival time,
+departure time, and distance along the shape. During a scheduled dwell, the
+train stays at $s_i$. Between departure $d_i$ and the next arrival $a_{i+1}$:
+
+$$
+q(t) = \operatorname{clamp}\left(
+\frac{t-d_i}{a_{i+1}-d_i}, 0, 1
+\right)
+$$
+
+$$
+h(q) = 3q^2 - 2q^3
+$$
+
+$$
+s(t) = s_i + \left(s_{i+1}-s_i\right)h(q(t))
+$$
+
+The smoothstep function $h$ makes departures and arrivals look continuous. It
+is a visual estimate, not a physical model of acceleration or live train speed.
+
+### 3. Turn distance back into a map point
+
+The renderer finds the shape vertices whose cumulative distances contain
+$s(t)$. For vertices $v_j$ and $v_{j+1}$:
+
+$$
+\lambda = \frac{s(t)-S_j}{S_{j+1}-S_j}
+$$
+
+$$
+r(t) = (1-\lambda)v_j + \lambda v_{j+1}
+$$
+
+That point becomes the center of the train roundel. A short direction stem is
+traced through the same shape vertices, so it stays attached to curved tracks.
+
+## Building the data
+
+The compiler reads these MTA GTFS files:
+
+- `feed_info.txt`, `calendar.txt`, and `calendar_dates.txt`
+- `routes.txt`, `trips.txt`, and `stop_times.txt`
+- `stops.txt` and `shapes.txt`
+
+It also reads NYC borough, street-centerline, and park GeoJSON. Coordinates are
+placed in a local projection centered near New York, rotated by $-29^\circ$ to
+give Manhattan its familiar upright orientation, fitted to a $1200 \times 820$
+view box, and simplified for Canvas rendering.
+
+The compiler then:
+
+1. Creates the borough, street, park, landmark, and route geometry.
+2. Projects every trip stop onto its route shape.
+3. Stores arrival, departure, and shape-distance keyframes for each trip.
+4. Groups trips by GTFS service calendar.
+5. Writes content-hashed map and schedule chunks.
+6. Writes `manifest.json` last, with feed dates and SHA-256 hashes for every
+   source file.
+
+The browser selects service with the MTA calendar and exception tables. It
+loads both the current service day and the previous one, which preserves GTFS
+times such as `25:10:00` after midnight. The display clock always uses
+`America/New_York`. If today falls outside the bundled feed window, the app
+replays the same time of day on the last covered date and labels it as replay.
+
+To compile a new snapshot:
+
+```bash
+MTA_GTFS_DIRECTORY=/path/to/google_transit \
+NYC_BOROUGHS_FILE=/path/to/boroughs.geojson \
+NYC_MAJOR_STREETS_FILE=/path/to/major-streets.geojson \
+NYC_MANHATTAN_STREETS_FILE=/path/to/manhattan-streets.geojson \
+NYC_PARKS_FILE=/path/to/parks.geojson \
+pnpm data:build
+```
+
+See [`data/subway/README.md`](./data/subway/README.md) for the required source
+files. Generated assets live in [`public/data/subway`](./public/data/subway).
+
+## Run locally
+
+This project uses pnpm.
 
 ```bash
 pnpm install
@@ -36,33 +170,16 @@ pnpm lint
 pnpm build
 ```
 
-## Schedule data
+## Data and licensing
 
-The committed production bundle currently uses MTA feed version `20260807-H-rockaways-extension-removed`, covering May 26 through October 31, 2026. The source of truth is [`public/data/subway/manifest.json`](./public/data/subway/manifest.json).
+The committed manifest identifies the exact feed version, coverage dates, and
+source hashes used for the current build. Regular static GTFS describes the
+planned schedule and omits most temporary service changes.
 
-No external database, API key, or runtime data service is required. The browser loads the generated, content-hashed map and schedule chunks from [`public/data/subway`](./public/data/subway).
+Schedule data comes from [MTA Developer Resources](https://www.mta.info/developers).
+Geography comes from NYC Open Data. The interface and cartography are original.
 
-The regular MTA subway GTFS represents the normal schedule and does not include most temporary service changes. Before deploying outside the manifest’s coverage window—or when a new MTA timetable becomes effective—download a fresh static GTFS snapshot and rebuild the bundle:
-
-```bash
-MTA_GTFS_DIRECTORY=/path/to/google_transit \
-NYC_BOROUGHS_FILE=/path/to/boroughs.geojson \
-NYC_MAJOR_STREETS_FILE=/path/to/major-streets.geojson \
-NYC_MANHATTAN_STREETS_FILE=/path/to/manhattan-streets.geojson \
-NYC_PARKS_FILE=/path/to/parks.geojson \
-pnpm data:build
-```
-
-See [`data/subway/README.md`](./data/subway/README.md) for source requirements and reproducibility details.
-
-## Deployment
-
-The application can be deployed as a standard Next.js app. On Vercel, production and preview domains are detected automatically. For another host, set `NEXT_PUBLIC_SITE_URL` to the public origin so social metadata resolves to absolute URLs.
-
-The generated schedule bundle is valid for an immediate release on August 10, 2026. Refresh it before October 31, 2026 if the application needs to remain current beyond that timetable.
-
-## Data and identity
-
-Schedule data comes from [MTA Developer Resources](https://www.mta.info/developers). Geography is derived from NYC open-data borough, street-centerline, and functional-parkland datasets. Every source file is hashed in the generated manifest.
-
-The interface and cartography are original, but MTA subway route indicators—including the blue A-train roundel used in the app icon and social card—are MTA intellectual property. A public release that retains those indicators should follow the [MTA Licensing Program](https://www.mta.info/doing-business-with-us/licensing-program). Replace the roundel with an original mark if licensing is not desired.
+MTA route indicators, including the blue A-train roundel used in the app icon
+and social card, are MTA intellectual property. A public release that keeps
+those indicators should follow the
+[MTA Licensing Program](https://www.mta.info/doing-business-with-us/licensing-program).
