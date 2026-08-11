@@ -30,6 +30,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   Flow with Street Atlas, Transit Overlay, and Quiet Grid. All three share the
   same geographic substrate so reviews compare visual density and information
   hierarchy rather than unrelated map shapes.
+- The corridor-rendering study is isolated at
+  `app/prototypes/network-rendering` and compares Reference, Trunk Bands, and
+  Shared Lanes without changing the production map. Keep its picker and
+  prototype-only data out of the production component graph until the user
+  selects a direction.
+- `scripts/prototypes/generate-network-rendering.mjs` writes the study's
+  `public/data/prototypes/network-rendering.json` artifact from the same MTA
+  GTFS and NYC borough projection as production. It keeps 22,597 points at a
+  `0.06` simplification tolerance versus production's 11,890 points at `0.24`.
+  Shared Lanes detects nearby parallel color families with a direction-aware
+  spatial grid; its computed lane geometry is cached across picker switches.
 - `scripts/generate-subway-prototype-data.mjs` produces the prototype-only
   `city-map-data.ts` artifact from official NYC borough, street-centerline, and
   functional-parkland GeoJSON plus the static MTA subway GTFS. It merges road
