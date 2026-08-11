@@ -125,9 +125,7 @@ The compiler smooths each shape's factors three times with a local weighted
 average:
 
 $$
-f_i^{(k+1)} = \frac{1}{4}f_{i-1}^{(k)}
-+ \frac{1}{2}f_i^{(k)}
-+ \frac{1}{4}f_{i+1}^{(k)}
+f_i^{(k+1)} = \frac{1}{4}f_{i-1}^{(k)} + \frac{1}{2}f_i^{(k)} + \frac{1}{4}f_{i+1}^{(k)}
 $$
 
 If $\hat{n}_i$ is the stable normal at a shape vertex and $\sigma$ is the
