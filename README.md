@@ -1,6 +1,6 @@
 # Subway in Motion
 
-![Subway in Motion with a blue A train line](./public/brand/subway-in-motion.svg)
+![Subway in Motion with a blue A train line on a dark background](./public/brand/subway-in-motion.svg)
 
 An original, animated map of New York City and its subway network. It shows
 where trains would be right now if they followed the MTA's published static
@@ -48,9 +48,9 @@ For a stop point $p$ and a shape segment from $a$ to $b$, the nearest point on
 the segment is:
 
 $$
-u = \operatorname{clamp}\left(
-\frac{(p-a) \cdot (b-a)}{\lVert b-a \rVert^2}, 0, 1
-\right)
+u = \max\left(0, \min\left(1,
+\frac{(p-a) \cdot (b-a)}{\|b-a\|^2}
+\right)\right)
 $$
 
 $$
@@ -61,7 +61,7 @@ If $S_j$ is the cumulative shape distance at the start of that segment, the
 stop's distance along the shape is:
 
 $$
-s_i = S_j + u\lVert b-a \rVert
+s_i = S_j + u\|b-a\|
 $$
 
 Stops are processed in trip order. The segment search only moves forward, and
@@ -75,9 +75,9 @@ departure time, and distance along the shape. During a scheduled dwell, the
 train stays at $s_i$. Between departure $d_i$ and the next arrival $a_{i+1}$:
 
 $$
-q(t) = \operatorname{clamp}\left(
-\frac{t-d_i}{a_{i+1}-d_i}, 0, 1
-\right)
+q(t) = \max\left(0, \min\left(1,
+\frac{t-d_i}{a_{i+1}-d_i}
+\right)\right)
 $$
 
 $$
