@@ -206,7 +206,7 @@ pnpm lint
 pnpm build
 ```
 
-## Data and licensing
+## Data
 
 The committed manifest identifies the exact feed version, coverage dates, and
 source hashes used for the current build. Regular static GTFS describes the
@@ -214,8 +214,3 @@ planned schedule and omits most temporary service changes.
 
 Schedule data comes from [MTA Developer Resources](https://www.mta.info/developers).
 Geography comes from NYC Open Data. The interface and cartography are original.
-
-MTA route indicators, including the blue A-train roundel used in the app icon
-and social card, are MTA intellectual property. A public release that keeps
-those indicators should follow the
-[MTA Licensing Program](https://www.mta.info/doing-business-with-us/licensing-program).

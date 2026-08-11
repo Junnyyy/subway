@@ -122,8 +122,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - The bundled MTA static GTFS currently covers 2026-05-26 through 2026-10-31.
   It is sufficient for an immediate 2026-08-10 release, but regular GTFS omits
   most temporary service changes and must be refreshed for later timetables.
-  MTA data feeds are free to use; the A-train roundel is a licensed subway route
-  indicator, so retain the licensing warning in `README.md` until resolved.
 - Production route-family rows are interactive toggle buttons for the nine core
   color families. Fine-pointer hover temporarily previews a family; click,
   keyboard, or touch pins it; activating the pinned family restores the full
