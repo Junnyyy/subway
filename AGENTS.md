@@ -95,6 +95,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   land, streets, and parks rather than a blue-gray wash. Route lines use a
   restrained constant screen weight as the camera zooms so geography remains
   legible instead of scaling the transit strokes into dominant bands.
+- The production rail intentionally echoes johnnyle.io through the native
+  system-sans stack, warm `#f7f7f7` / `#111111` panel surfaces, medium-weight
+  editorial heading, and readable 11–14 px supporting scale. Keep the map's
+  existing water, land, park, and route palette independent so portfolio
+  cohesion frames the transit spectacle instead of recoloring it. Desktop uses
+  a 296 px rail with a 56 px top rhythm, short viewports retain the compact
+  fallback, and mobile uses a three-column 44 px route grid.
 - The production map supports inspection through 5× (500%) zoom. Keep the
   appearance control as a bare, action-oriented sun or moon glyph with its full
   44 px hit area, and preserve the personal intro line: “A city I love, moving
