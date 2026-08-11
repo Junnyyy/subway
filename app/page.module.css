@@ -1,10 +1,10 @@
 .experience {
   --water: #f4f7f8;
-  --ink: #25303a;
-  --muted: #68737d;
-  --faint: #98a0a7;
-  --hairline: rgb(37 48 58 / 11%);
-  --panel: rgb(253 252 249 / 94%);
+  --ink: #0f0e13;
+  --muted: #65656a;
+  --faint: #707075;
+  --hairline: rgb(15 14 19 / 8%);
+  --panel: #f7f7f7;
   display: grid;
   grid-template-columns: 278px minmax(0, 1fr);
   min-height: 100svh;
@@ -17,22 +17,22 @@
 
 .experience[data-theme="dark"] {
   --water: #060709;
-  --ink: #f1f3f4;
-  --muted: #9ca4aa;
-  --faint: #545d64;
-  --hairline: rgb(241 243 244 / 10%);
-  --panel: rgb(8 9 11 / 97%);
+  --ink: #d4d4d4;
+  --muted: #949494;
+  --faint: #858585;
+  --hairline: rgb(212 212 212 / 8%);
+  --panel: #111111;
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   .experience[data-theme="system"] {
     --water: #060709;
-    --ink: #f1f3f4;
-    --muted: #9ca4aa;
-    --faint: #545d64;
-    --hairline: rgb(241 243 244 / 10%);
-    --panel: rgb(8 9 11 / 97%);
+    --ink: #d4d4d4;
+    --muted: #949494;
+    --faint: #858585;
+    --hairline: rgb(212 212 212 / 8%);
+    --panel: #111111;
     color-scheme: dark;
   }
 }
