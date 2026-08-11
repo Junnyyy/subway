@@ -71,6 +71,8 @@ type LaneShape = {
   factors: number[];
 };
 
+const laneShapeCache = new WeakMap<DetailedShape[], LaneShape[]>();
+
 const palette = {
   light: {
     water: "#f4f7f8",
@@ -207,7 +209,7 @@ function buildLaneShapes(
   shapes: DetailedShape[],
   families: RouteFamily[],
 ): LaneShape[] {
-  const familyByRoute = new Map<number | string, number>();
+  const familyByRoute = new Map<string, number>();
   families.forEach((family, familyIndex) => {
     family.routeIds.forEach((routeId) => familyByRoute.set(routeId, familyIndex));
   });
@@ -299,6 +301,17 @@ function buildLaneShapes(
 
     return { shape, factors };
   });
+}
+
+function cachedLaneShapes(
+  shapes: DetailedShape[],
+  families: RouteFamily[],
+) {
+  const cached = laneShapeCache.get(shapes);
+  if (cached) return cached;
+  const laneShapes = buildLaneShapes(shapes, families);
+  laneShapeCache.set(shapes, laneShapes);
+  return laneShapes;
 }
 
 function drawBaseMap(
@@ -499,7 +512,7 @@ function NetworkCanvas({
     [scene.manifest.routeFamilies],
   );
   const laneShapes = useMemo(
-    () => (mode === "lanes" ? buildLaneShapes(scene.detail.shapes, families) : []),
+    () => (mode === "lanes" ? cachedLaneShapes(scene.detail.shapes, families) : []),
     [families, mode, scene.detail.shapes],
   );
 

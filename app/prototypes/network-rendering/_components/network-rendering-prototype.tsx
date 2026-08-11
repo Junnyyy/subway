@@ -76,15 +76,16 @@ export function NetworkRenderingPrototype({
 
   useEffect(() => {
     let ignore = false;
+    const manifestRequest = loadJson<PrototypeScene["manifest"]>(
+      "/data/subway/manifest.json",
+    );
+    const detailRequest = loadJson<PrototypeScene["detail"]>(
+      "/data/prototypes/network-rendering.json",
+    );
 
-    loadJson<PrototypeScene["manifest"]>("/data/subway/manifest.json")
-      .then(async (manifest) => {
-        const [map, detail] = await Promise.all([
-          loadJson<PrototypeScene["map"]>(manifest.mapFile),
-          loadJson<PrototypeScene["detail"]>(
-            "/data/prototypes/network-rendering.json",
-          ),
-        ]);
+    Promise.all([manifestRequest, detailRequest])
+      .then(async ([manifest, detail]) => {
+        const map = await loadJson<PrototypeScene["map"]>(manifest.mapFile);
         return { manifest, map, detail };
       })
       .then((nextScene) => {
