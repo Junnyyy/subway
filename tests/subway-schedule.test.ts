@@ -59,6 +59,7 @@ const shape: ShapeDefinition = {
   routeId: "A",
   points: [0, 0, 10, 0, 20, 0],
   distances: [0, 10, 20],
+  laneFactors: [0, 0, 0],
 };
 
 const trip: ScheduledTrip = {
@@ -91,6 +92,7 @@ test("traces a local direction segment through the actual shape geometry", () =>
     routeId: "A",
     points: [0, 0, 10, 10, 20, 0],
     distances: [0, 10, 20],
+    laneFactors: [0, 0, 0],
   };
 
   assert.deepEqual(shapePointsBetweenDistances(curvedShape, 5, 15), [
@@ -98,6 +100,49 @@ test("traces a local direction segment through the actual shape geometry", () =>
     { x: 10, y: 10 },
     { x: 15, y: 5 },
   ]);
+});
+
+test("keeps train positions and direction paths on lane-aware geometry", () => {
+  const laneShape: ShapeDefinition = {
+    id: "lane",
+    routeId: "A",
+    points: [0, 0, 10, 0, 20, 0],
+    distances: [0, 10, 20],
+    laneFactors: [1, 1, 1],
+  };
+
+  assert.deepEqual(positionAtDistance(laneShape, 5, 2), {
+    x: 5,
+    y: 2,
+    distance: 5,
+    progress: 0.25,
+  });
+  assert.deepEqual(shapePointsBetweenDistances(laneShape, 5, 15, 2), [
+    { x: 5, y: 2 },
+    { x: 10, y: 2 },
+    { x: 15, y: 2 },
+  ]);
+  assert.equal(sampleScheduledTrip(trip, laneShape, 135, 2)?.y, 2);
+});
+
+test("keeps a lane on the same visual side when a shape reverses", () => {
+  const forward: ShapeDefinition = {
+    id: "forward",
+    routeId: "A",
+    points: [0, 0, 10, 0, 20, 0],
+    distances: [0, 10, 20],
+    laneFactors: [1, 1, 1],
+  };
+  const reverse: ShapeDefinition = {
+    id: "reverse",
+    routeId: "A",
+    points: [20, 0, 10, 0, 0, 0],
+    distances: [0, 10, 20],
+    laneFactors: [1, 1, 1],
+  };
+
+  assert.equal(positionAtDistance(forward, 10, 3)?.y, 3);
+  assert.equal(positionAtDistance(reverse, 10, 3)?.y, 3);
 });
 
 test("interpolates between scheduled stops and clamps shape distances", () => {

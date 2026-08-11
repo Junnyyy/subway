@@ -20,6 +20,7 @@ import {
   projectPointToLine,
   simplify,
 } from "./geometry.mjs";
+import { buildLaneFactors } from "./lanes.mjs";
 
 const VIEWBOX = { width: 1200, height: 820, padding: 34 };
 const ROTATION = (-29 * Math.PI) / 180;
@@ -262,6 +263,7 @@ async function build() {
     }))
     .sort((a, b) => a.sortOrder - b.sortOrder);
   const routeById = new Map(routes.map((route) => [route.id, route]));
+  const routeFamilies = groupRouteFamilies(routes);
 
   const tripRows = readCsv(gtfsFile("trips.txt"));
   const tripById = new Map(tripRows.map((trip) => [trip.trip_id, trip]));
@@ -286,7 +288,7 @@ async function build() {
     const routeId = routeForShape.get(shapeId);
     if (!routeId || !routeById.has(routeId)) continue;
     const project = routeId === "SI" ? projectStaten : projectMain;
-    const tolerance = routeId === "SI" ? 0.18 : 0.24;
+    const tolerance = routeId === "SI" ? 0.18 : 0.06;
     const projected = simplify(coordinates.map(project), tolerance).map((point) => ({
       x: Number(point.x.toFixed(2)),
       y: Number(point.y.toFixed(2)),
@@ -303,6 +305,11 @@ async function build() {
     });
     runtimeShapes.push({ points: projected, distances });
   }
+
+  const laneFactors = buildLaneFactors(shapes, routeFamilies);
+  shapes.forEach((shape, index) => {
+    shape.laneFactors = laneFactors[index];
+  });
 
   const stopRows = readCsv(gtfsFile("stops.txt"));
   const stopById = new Map(stopRows.map((stop) => [stop.stop_id, stop]));
@@ -453,7 +460,7 @@ async function build() {
   };
 
   const manifest = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     feed: {
       publisherName: feed.feed_publisher_name,
       publisherUrl: feed.feed_publisher_url,
@@ -463,7 +470,7 @@ async function build() {
     },
     mapFile,
     routes,
-    routeFamilies: groupRouteFamilies(routes),
+    routeFamilies,
     calendars,
     exceptions,
     schedules: scheduleFiles,

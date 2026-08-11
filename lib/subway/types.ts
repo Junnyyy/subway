@@ -43,6 +43,7 @@ export type ShapeDefinition = {
   routeId: string;
   points: number[];
   distances: number[];
+  laneFactors: number[];
 };
 
 export type TripKeyframe = readonly [
@@ -96,7 +97,7 @@ export type SubwayMapData = {
 };
 
 export type SubwayManifest = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   feed: FeedInfo;
   mapFile: string;
   routes: RouteDefinition[];

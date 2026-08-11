@@ -5,6 +5,7 @@ import type {
   ServiceException,
   ShapeDefinition,
 } from "./types";
+import { shapePointAtIndex } from "./lane-geometry.ts";
 
 const NEW_YORK_TIME_ZONE = "America/New_York";
 const dateFormatter = new Intl.DateTimeFormat("en-CA", {
@@ -116,6 +117,7 @@ function smoothProgress(value: number) {
 export function positionAtDistance(
   shape: ShapeDefinition,
   distance: number,
+  laneSpacing = 0,
 ): ScheduledPosition | null {
   if (shape.distances.length < 2 || shape.points.length < 4) return null;
   const maximum = shape.distances.at(-1) ?? 0;
@@ -135,17 +137,12 @@ export function positionAtDistance(
   const endDistance = shape.distances[endIndex];
   const segmentLength = endDistance - startDistance;
   const progress = segmentLength > 0 ? (target - startDistance) / segmentLength : 0;
-  const startPointIndex = startIndex * 2;
-  const endPointIndex = endIndex * 2;
+  const startPoint = shapePointAtIndex(shape, startIndex, laneSpacing);
+  const endPoint = shapePointAtIndex(shape, endIndex, laneSpacing);
 
   return {
-    x:
-      shape.points[startPointIndex] +
-      (shape.points[endPointIndex] - shape.points[startPointIndex]) * progress,
-    y:
-      shape.points[startPointIndex + 1] +
-      (shape.points[endPointIndex + 1] - shape.points[startPointIndex + 1]) *
-        progress,
+    x: startPoint.x + (endPoint.x - startPoint.x) * progress,
+    y: startPoint.y + (endPoint.y - startPoint.y) * progress,
     distance: target,
     progress: maximum > 0 ? target / maximum : 0,
   };
@@ -155,9 +152,10 @@ export function shapePointsBetweenDistances(
   shape: ShapeDefinition,
   startDistance: number,
   endDistance: number,
+  laneSpacing = 0,
 ) {
-  const start = positionAtDistance(shape, startDistance);
-  const end = positionAtDistance(shape, endDistance);
+  const start = positionAtDistance(shape, startDistance, laneSpacing);
+  const end = positionAtDistance(shape, endDistance, laneSpacing);
   if (!start || !end) return [];
   if (start.distance === end.distance) return [{ x: start.x, y: start.y }];
 
@@ -169,7 +167,7 @@ export function shapePointsBetweenDistances(
   for (let index = 0; index < shape.distances.length; index += 1) {
     const distance = shape.distances[index];
     if (distance <= lowerDistance || distance >= upperDistance) continue;
-    points.push({ x: shape.points[index * 2], y: shape.points[index * 2 + 1] });
+    points.push(shapePointAtIndex(shape, index, laneSpacing));
   }
 
   points.push({ x: end.x, y: end.y });
@@ -180,11 +178,14 @@ export function sampleScheduledTrip(
   trip: ScheduledTrip,
   shape: ShapeDefinition,
   seconds: number,
+  laneSpacing = 0,
 ) {
   if (seconds < trip.startSeconds || seconds > trip.endSeconds) return null;
   const frames = trip.keyframes;
   if (!frames.length) return null;
-  if (frames.length === 1) return positionAtDistance(shape, frames[0][2]);
+  if (frames.length === 1) {
+    return positionAtDistance(shape, frames[0][2], laneSpacing);
+  }
 
   let low = 0;
   let high = frames.length - 1;
@@ -196,16 +197,19 @@ export function sampleScheduledTrip(
 
   const current = frames[low];
   if (seconds <= current[1] || low === frames.length - 1) {
-    return positionAtDistance(shape, current[2]);
+    return positionAtDistance(shape, current[2], laneSpacing);
   }
 
   const next = frames[low + 1];
-  if (seconds >= next[0]) return positionAtDistance(shape, next[2]);
+  if (seconds >= next[0]) {
+    return positionAtDistance(shape, next[2], laneSpacing);
+  }
   const duration = next[0] - current[1];
   const progress = duration > 0 ? (seconds - current[1]) / duration : 1;
   const eased = smoothProgress(progress);
   return positionAtDistance(
     shape,
     current[2] + (next[2] - current[2]) * eased,
+    laneSpacing,
   );
 }

@@ -17,7 +17,7 @@ function readJson<T>(path: string) {
 test("generated subway manifest references complete production artifacts", () => {
   assert.equal(existsSync(manifestPath), true);
   const manifest = readJson<SubwayManifest>(manifestPath);
-  assert.equal(manifest.schemaVersion, 1);
+  assert.equal(manifest.schemaVersion, 2);
   assert.ok(manifest.feed.startDate < manifest.feed.endDate);
   assert.equal(manifest.routes.length, 29);
   assert.ok(Object.keys(manifest.schedules).length >= 3);
@@ -90,6 +90,7 @@ test("generated cartography and route shapes stay inside their intended frames",
   const landmarkIds = new Set<string>();
   let statenIslandShapes = 0;
   let mainMapShapes = 0;
+  let sharedLanePoints = 0;
 
   assert.deepEqual(
     map.boroughs.map((borough) => borough.name).sort(),
@@ -105,6 +106,10 @@ test("generated cartography and route shapes stay inside their intended frames",
     assert.ok(shape.points.length >= 4);
     assert.equal(shape.points.length % 2, 0);
     assert.equal(shape.distances.length, shape.points.length / 2);
+    assert.equal(shape.laneFactors.length, shape.points.length / 2);
+    assert.ok(shape.laneFactors.every(Number.isFinite));
+    assert.ok(shape.laneFactors.every((factor) => Math.abs(factor) <= 4));
+    sharedLanePoints += shape.laneFactors.filter((factor) => factor !== 0).length;
     assert.ok(shape.distances.at(-1)! > 0);
 
     for (let index = 1; index < shape.distances.length; index += 1) {
@@ -127,6 +132,7 @@ test("generated cartography and route shapes stay inside their intended frames",
 
   assert.ok(statenIslandShapes > 0);
   assert.ok(mainMapShapes >= 200);
+  assert.ok(sharedLanePoints > 10_000);
 
   for (const landmark of map.landmarks) {
     assert.equal(landmarkIds.has(landmark.id), false, landmark.id);
