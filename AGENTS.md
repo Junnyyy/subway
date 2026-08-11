@@ -10,15 +10,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Project learnings
 
-- The visualization exploration is isolated at
-  `app/prototypes/subway-network`. It contains three switchable directions
-  (Boroughs, Diagram, and Flow); do not import prototype components into the
-  production surface before a direction is selected.
-- Prototype train positions and route geometry are intentionally synthetic.
-  Route colors are derived from the official MTA Colors dataset. When a
-  direction is promoted, replace the representative paths with generated
-  geometry from the official static subway GTFS `shapes.txt` file before
-  adding GTFS-RT.
+- Exploration-only routes, generated map modules, and one-off generators were
+  removed after the production direction was selected. Keep the root route and
+  `scripts/subway` pipeline as the authoritative implementation; do not restore
+  superseded comparison surfaces without an explicit new exploration task.
 - MTA data feeds are free to use, but MTA logos, maps, symbols, and related
   intellectual property may require a license. Keep original cartography and
   avoid copying official map assets without resolving that boundary.
@@ -26,16 +21,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   can fail while binding an internal compiler port. The documented Next.js
   Webpack fallback distinguishes that environment failure from application
   source errors: `pnpm build --webpack`.
-- The second subway-network prototype round replaces Boroughs, Diagram, and
-  Flow with Street Atlas, Transit Overlay, and Quiet Grid. All three share the
-  same geographic substrate so reviews compare visual density and information
-  hierarchy rather than unrelated map shapes.
-- `scripts/generate-subway-prototype-data.mjs` produces the prototype-only
-  `city-map-data.ts` artifact from official NYC borough, street-centerline, and
-  functional-parkland GeoJSON plus the static MTA subway GTFS. It merges road
-  geometry into a few SVG paths, keeps Manhattan local streets while limiting
-  outer-borough streets to cartographic levels, and selects dominant GTFS
-  shapes for each service. Train positions remain deliberately simulated.
 - Map landmark callouts are keyed to stable GTFS parent stop IDs rather than
   stop names because major complexes often repeat the same name across several
   route records. Keep the hand-tuned label offsets and anchors in the generator
@@ -120,10 +105,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `app/icon.svg` replaces the default favicon, while `app/opengraph-image.tsx`
   and `app/twitter-image.tsx` render the flat 1200×630 social card.
   `public/brand/subway-in-motion.svg` mirrors that composition for repository
-  documentation. The social composition uses the current rail's warm light
-  surface, native-sans-like editorial hierarchy, and `New York City` eyebrow.
-  Keep all three deterministic and gradient-free, and keep the generated card
-  and repository SVG visually synchronized. Metadata URL resolution prefers
+  documentation. The social composition uses a near-black surface, white title,
+  blue A-train line, and an optically centered text A. Keep all three
+  deterministic and gradient-free, and keep the generated card and repository
+  SVG visually synchronized. Metadata URL resolution prefers
   `NEXT_PUBLIC_SITE_URL`, then Vercel production/preview hosts, then localhost.
 - `README.md` is the public technical overview of the position model. Keep its
   stop-to-shape projection, monotonic shape distance, smoothstep schedule
