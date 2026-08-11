@@ -1,17 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
   <title id="title">Subway in Motion</title>
-  <desc id="description">The words New York City and Subway in motion above a blue subway line ending in an A train marker.</desc>
-  <rect width="1200" height="630" fill="#f7f7f7" />
-  <text x="76" y="97" fill="#65656a" font-family="Arial, Helvetica, sans-serif" font-size="19" font-weight="400" letter-spacing="2.7">NEW YORK CITY</text>
-  <g fill="#0f0e13" font-family="Arial, Helvetica, sans-serif" font-size="98" font-weight="400" letter-spacing="-3.4">
-    <text x="76" y="264">Subway</text>
-    <text x="76" y="358">in motion</text>
+  <desc id="description">The words Subway in motion above a blue subway line ending in an A train marker on a dark background.</desc>
+  <rect width="1200" height="630" fill="#060709" />
+  <g fill="#f1f3f4" font-family="Arial, Helvetica, sans-serif" font-size="116" font-weight="400" letter-spacing="-7">
+    <text x="76" y="260">Subway</text>
+    <text x="76" y="362">in motion</text>
   </g>
-  <rect x="0" y="493" width="920" height="10" fill="#0039a6" />
-  <circle cx="980" cy="498" r="60" fill="#0039a6" />
-  <path
-    fill="#fff"
-    fill-rule="evenodd"
-    d="M980 458.5 1003 512h-10.8l-4.8-12h-14.8l-4.8 12H957l23-53.5Zm0 20-4.3 11.4h8.6l-4.3-11.4Z"
-  />
+  <rect x="0" y="492" width="917" height="14" fill="#0039a6" />
+  <circle cx="980" cy="499" r="63" fill="#0039a6" />
+  <text x="980" y="499" dy="-2" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="76" font-weight="400" text-anchor="middle" dominant-baseline="central">A</text>
 </svg>

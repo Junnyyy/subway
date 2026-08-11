@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 export const alt =
-  "Subway in Motion with a blue A train line on a light background";
+  "Subway in Motion with a blue A train line on a dark background";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -16,39 +16,26 @@ export default function OpenGraphImage() {
     (
       <div
         style={{
-          background: "#f7f7f7",
-          color: "#0f0e13",
+          background: "#060709",
+          color: "#f1f3f4",
           display: "flex",
           flexDirection: "column",
           fontFamily: "Geist",
           height: "100%",
-          padding: "78px 76px 82px",
+          justifyContent: "center",
+          padding: "66px 76px 82px",
           position: "relative",
           width: "100%",
         }}
       >
         <div
           style={{
-            color: "#65656a",
-            display: "flex",
-            fontSize: 19,
-            fontWeight: 400,
-            letterSpacing: "0.14em",
-            lineHeight: 1,
-          }}
-        >
-          NEW YORK CITY
-        </div>
-
-        <div
-          style={{
             display: "flex",
             flexDirection: "column",
-            fontSize: 98,
+            fontSize: 116,
             fontWeight: 400,
-            letterSpacing: "-0.035em",
-            lineHeight: 0.96,
-            marginTop: 68,
+            letterSpacing: "-0.06em",
+            lineHeight: 0.88,
           }}
         >
           <span>Subway</span>
@@ -58,31 +45,31 @@ export default function OpenGraphImage() {
         <div
           style={{
             alignItems: "center",
-            bottom: 72,
+            bottom: 68,
             display: "flex",
             left: 0,
             position: "absolute",
           }}
         >
-          <div style={{ background: "#0039a6", height: 10, width: 920 }} />
+          <div style={{ background: "#0039a6", height: 14, width: 917 }} />
           <div
             style={{
               alignItems: "center",
               background: "#0039a6",
               borderRadius: "50%",
+              color: "#ffffff",
               display: "flex",
-              height: 120,
+              fontSize: 76,
+              fontWeight: 400,
+              height: 126,
               justifyContent: "center",
-              width: 120,
+              lineHeight: 1,
+              width: 126,
             }}
           >
-            <svg height="61" viewBox="0 0 46 54" width="52">
-              <path
-                d="M23 0 46 53.5H35.2l-4.8-12H15.6l-4.8 12H0L23 0Zm0 20-4.3 11.4h8.6L23 20Z"
-                fill="#ffffff"
-                fillRule="evenodd"
-              />
-            </svg>
+            <span style={{ display: "flex", transform: "translateY(-3px)" }}>
+              A
+            </span>
           </div>
         </div>
       </div>
