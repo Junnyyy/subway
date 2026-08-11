@@ -111,9 +111,15 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   `app/icon.svg` replaces the default favicon, while `app/opengraph-image.tsx`
   and `app/twitter-image.tsx` render the flat 1200×630 social card.
   `public/brand/subway-in-motion.svg` mirrors that composition for repository
-  documentation. Keep all three deterministic and gradient-free. Metadata URL
-  resolution prefers `NEXT_PUBLIC_SITE_URL`, then Vercel production/preview
-  hosts, then localhost.
+  documentation. The social composition uses the current rail's warm light
+  surface, native-sans-like editorial hierarchy, and `New York City` eyebrow.
+  Keep all three deterministic and gradient-free, and keep the generated card
+  and repository SVG visually synchronized. Metadata URL resolution prefers
+  `NEXT_PUBLIC_SITE_URL`, then Vercel production/preview hosts, then localhost.
+- `README.md` is the public technical overview of the position model. Keep its
+  stop-to-shape projection, monotonic shape distance, smoothstep schedule
+  interpolation, previous-day GTFS handling, and content-hashed compiler steps
+  synchronized with `scripts/subway` and `lib/subway/schedule.ts`.
 - The initial `system` appearance must be represented as `data-theme="system"`
   in server-rendered markup. CSS resolves those tokens through
   `prefers-color-scheme` before hydration; JavaScript still resolves the same
