@@ -104,8 +104,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   fallback, and mobile uses a three-column 44 px route grid.
 - The production map supports inspection through 5× (500%) zoom. Keep the
   appearance control as a bare, action-oriented sun or moon glyph with its full
-  44 px hit area, and preserve the personal intro line: “A city I love, moving
-  through the system that connects it.”
+  44 px hit area. Keep the production rail introduction limited to the “New
+  York City” eyebrow and “Subway in motion” title; the former personal sentence
+  beneath the title was intentionally removed to keep the desktop rail spare.
 - Production share identity uses the blue A-train roundel: the hand-authored
   `app/icon.svg` replaces the default favicon, while `app/opengraph-image.tsx`
   and `app/twitter-image.tsx` render the flat 1200×630 social card.
