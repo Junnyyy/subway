@@ -378,6 +378,7 @@ export function TransitExperience({ manifest }: { manifest: SubwayManifest }) {
         <TransitMap
           scene={scene}
           routes={coreRoutes}
+          routeFamilies={coreRouteFamilies}
           visibleRouteIds={activeRouteIds}
           dark={isDark}
           isPlaying={isPlaying}

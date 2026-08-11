@@ -14,9 +14,12 @@ import {
   sampleScheduledTrip,
   shapePointsBetweenDistances,
 } from "@/lib/subway/schedule";
+import { shapePointAtIndex } from "@/lib/subway/lane-geometry";
 import type {
   RouteDefinition,
+  RouteFamily,
   ScheduleChunk,
+  ShapeDefinition,
   SubwayMapData,
 } from "@/lib/subway/types";
 import styles from "../page.module.css";
@@ -81,6 +84,7 @@ const REBASE_ZOOM_OUT_RATIO = 0.94;
 const REBASE_PAN_DISTANCE = 48;
 const TRAIN_DIRECTION_STEM_LENGTH = 15;
 const TRAIN_MOTION_SAMPLE_SECONDS = 5;
+const ROUTE_LANE_SPACING = 4.7;
 
 type ViewState = {
   zoom: number;
@@ -192,11 +196,19 @@ function applyMapTransform(
   context.scale(transform.scale, transform.scale);
 }
 
-function traceShape(context: CanvasRenderingContext2D, points: readonly number[]) {
+function traceShape(
+  context: CanvasRenderingContext2D,
+  shape: ShapeDefinition,
+  laneSpacing: number,
+) {
+  const pointCount = shape.points.length / 2;
+  if (pointCount < 2) return;
+  const first = shapePointAtIndex(shape, 0, laneSpacing);
   context.beginPath();
-  context.moveTo(points[0], points[1]);
-  for (let index = 2; index < points.length; index += 2) {
-    context.lineTo(points[index], points[index + 1]);
+  context.moveTo(first.x, first.y);
+  for (let index = 1; index < pointCount; index += 1) {
+    const point = shapePointAtIndex(shape, index, laneSpacing);
+    context.lineTo(point.x, point.y);
   }
 }
 
@@ -204,6 +216,7 @@ function drawStaticMap(
   canvas: HTMLCanvasElement,
   map: SubwayMapData,
   routes: readonly RouteDefinition[],
+  routeFamilies: readonly RouteFamily[],
   visibleRouteIds: ReadonlySet<string> | null,
   dark: boolean,
   width: number,
@@ -216,6 +229,7 @@ function drawStaticMap(
   const transform = mapTransform(width, height, camera);
   const routeById = new Map(routes.map((route) => [route.id, route]));
   const strokeWidth = (value: number) => value / transform.scale;
+  const laneSpacing = ROUTE_LANE_SPACING / transform.scale;
   const fontFamily = getComputedStyle(canvas).fontFamily;
 
   context.clearRect(0, 0, width, height);
@@ -248,24 +262,32 @@ function drawStaticMap(
   context.strokeStyle = colors.street;
   context.lineWidth = strokeWidth(1);
   context.stroke(new Path2D(map.streets.arterial));
-  context.strokeStyle = colors.casing;
-  context.lineWidth = strokeWidth(6.2);
+  const shapesByRoute = new Map<string, ShapeDefinition[]>();
   for (const shape of map.shapes) {
     if (shape.routeId === "SI") continue;
     if (visibleRouteIds && !visibleRouteIds.has(shape.routeId)) continue;
     if (!routeById.has(shape.routeId)) continue;
-    traceShape(context, shape.points);
-    context.stroke();
+    const routeShapes = shapesByRoute.get(shape.routeId) ?? [];
+    routeShapes.push(shape);
+    shapesByRoute.set(shape.routeId, routeShapes);
   }
-  context.lineWidth = strokeWidth(3.4);
-  for (const shape of map.shapes) {
-    if (shape.routeId === "SI") continue;
-    if (visibleRouteIds && !visibleRouteIds.has(shape.routeId)) continue;
-    const route = routeById.get(shape.routeId);
-    if (!route) continue;
-    context.strokeStyle = route.color;
-    traceShape(context, shape.points);
-    context.stroke();
+
+  for (const family of routeFamilies) {
+    const familyShapes = family.routeIds.flatMap(
+      (routeId) => shapesByRoute.get(routeId) ?? [],
+    );
+    context.strokeStyle = colors.casing;
+    context.lineWidth = strokeWidth(4.4);
+    for (const shape of familyShapes) {
+      traceShape(context, shape, laneSpacing);
+      context.stroke();
+    }
+    context.strokeStyle = family.color;
+    context.lineWidth = strokeWidth(2.6);
+    for (const shape of familyShapes) {
+      traceShape(context, shape, laneSpacing);
+      context.stroke();
+    }
   }
 
   context.textBaseline = "middle";
@@ -322,6 +344,7 @@ function drawTrains(
   if (!context) return { total: 0, byRoute: {} };
   const mobile = width < 640;
   const transform = mapTransform(width, height, camera);
+  const laneSpacing = ROUTE_LANE_SPACING / transform.scale;
   const routeById = new Map(routes.map((route) => [route.id, route]));
   const fontFamily = getComputedStyle(canvas).fontFamily;
   const byRoute: Record<string, number> = {};
@@ -344,7 +367,12 @@ function drawTrains(
       const shape = scene.map.shapes[trip.shapeIndex];
       const route = routeById.get(trip.routeId);
       if (!shape || !route) continue;
-      const position = sampleScheduledTrip(trip, shape, serviceSeconds);
+      const position = sampleScheduledTrip(
+        trip,
+        shape,
+        serviceSeconds,
+        laneSpacing,
+      );
       if (!position) continue;
       total += 1;
       byRoute[route.id] = (byRoute[route.id] ?? 0) + 1;
@@ -354,6 +382,7 @@ function drawTrains(
         trip,
         shape,
         Math.max(trip.startSeconds, serviceSeconds - TRAIN_MOTION_SAMPLE_SECONDS),
+        laneSpacing,
       );
       const recentDistance = recentPosition
         ? Math.hypot(
@@ -369,6 +398,7 @@ function drawTrains(
             position.distance - TRAIN_DIRECTION_STEM_LENGTH / transform.scale,
           ),
           position.distance,
+          laneSpacing,
         );
         if (stemPoints.length > 1) {
           context.save();
@@ -438,6 +468,7 @@ function useCanvasSize(containerRef: RefObject<HTMLDivElement | null>) {
 export function TransitMap({
   scene,
   routes,
+  routeFamilies,
   visibleRouteIds,
   dark,
   isPlaying,
@@ -446,6 +477,7 @@ export function TransitMap({
 }: {
   scene: LoadedScene | null;
   routes: RouteDefinition[];
+  routeFamilies: RouteFamily[];
   visibleRouteIds: ReadonlySet<string> | null;
   dark: boolean;
   isPlaying: boolean;
@@ -476,6 +508,7 @@ export function TransitMap({
   const renderInputsRef = useRef({
     scene,
     routes,
+    routeFamilies,
     visibleRouteIds,
     dark,
     size,
@@ -489,12 +522,13 @@ export function TransitMap({
     renderInputsRef.current = {
       scene,
       routes,
+      routeFamilies,
       visibleRouteIds,
       dark,
       size,
       isPlaying,
     };
-  }, [dark, isPlaying, routes, scene, size, visibleRouteIds]);
+  }, [dark, isPlaying, routeFamilies, routes, scene, size, visibleRouteIds]);
 
   const constrainView = useCallback(
     (view: ViewState): ViewState => {
@@ -530,6 +564,7 @@ export function TransitMap({
         staticCanvasRef.current,
         inputs.scene.map,
         inputs.routes,
+        inputs.routeFamilies,
         inputs.visibleRouteIds,
         inputs.dark,
         inputs.size.width,
@@ -881,13 +916,22 @@ export function TransitMap({
       staticCanvasRef.current,
       scene.map,
       routes,
+      routeFamilies,
       visibleRouteIds,
       dark,
       size.width,
       size.height,
       committedViewRef.current,
     );
-  }, [dark, routes, scene, size.height, size.width, visibleRouteIds]);
+  }, [
+    dark,
+    routeFamilies,
+    routes,
+    scene,
+    size.height,
+    size.width,
+    visibleRouteIds,
+  ]);
 
   useEffect(() => {
     const canvas = trainCanvasRef.current;
