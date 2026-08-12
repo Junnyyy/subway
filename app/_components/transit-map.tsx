@@ -15,6 +15,7 @@ import {
   shapePointsBetweenDistances,
 } from "@/lib/subway/schedule";
 import { shapePointAtIndex } from "@/lib/subway/lane-geometry";
+import { canvasPixelRatio } from "@/lib/subway/canvas";
 import type {
   RouteDefinition,
   RouteFamily,
@@ -157,7 +158,11 @@ function resizeCanvas(
   width: number,
   height: number,
 ) {
-  const ratio = Math.min(window.devicePixelRatio || 1, 2);
+  const ratio = canvasPixelRatio(
+    width,
+    height,
+    window.devicePixelRatio || 1,
+  );
   const pixelWidth = Math.max(1, Math.round(width * ratio));
   const pixelHeight = Math.max(1, Math.round(height * ratio));
   if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
