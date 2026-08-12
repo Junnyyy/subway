@@ -52,6 +52,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
   the train layer samples schedule keyframes outside React state. The clock
   always follows `America/New_York`; `prefers-reduced-motion` uses minute-based
   snapshots instead of continuous train motion, without adding playback UI.
+- Canvas backing density is device-aware. Desktop retains its 2× cap, while
+  maps below 640 px may use the device's native density through 3× so modern
+  phones do not upscale a 2× surface. Keep the mobile calculation behind the
+  2.5 million-pixel per-Canvas budget in `canvasPixelRatio`; verify typical 3×
+  phones, unusually tall mobile viewports, and the unchanged desktop cap when
+  adjusting resolution or performance.
 - Map inspection uses a single composite transform around both canvas layers:
   1–5× wheel, keyboard, and pinch zoom plus pointer or arrow-key pan.
   Keep gesture updates out of React state. The renderer applies an immediate
